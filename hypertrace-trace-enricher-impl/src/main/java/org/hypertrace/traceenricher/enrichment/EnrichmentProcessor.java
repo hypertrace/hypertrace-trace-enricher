@@ -10,8 +10,8 @@ import org.hypertrace.core.datamodel.Edge;
 import org.hypertrace.core.datamodel.Entity;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.StructuredTrace;
-import org.hypertrace.core.datamodel.shared.DataFlowMetricUtil;
-import org.hypertrace.core.datamodel.shared.DataFlowMetrics;
+import org.hypertrace.core.datamodel.shared.DataflowMetric;
+import org.hypertrace.core.datamodel.shared.DataflowMetricUtils;
 import org.hypertrace.core.datamodel.shared.HexUtils;
 import org.hypertrace.core.serviceframework.metrics.PlatformMetricsRegistry;
 import org.hypertrace.entity.data.service.client.EntityDataServiceClientProvider;
@@ -23,6 +23,7 @@ public class EnrichmentProcessor {
 
   private static final Logger LOG = LoggerFactory.getLogger(EnrichmentProcessor.class);
   private static Timer enrichmentArrivalTimer;
+  private static final String ENRICHMENT_ARRIVAL_LAG = "enrichment.arrival.lag";
   private final List<Enricher> enrichers = new ArrayList<>();
   public EnrichmentProcessor(List<EnricherInfo> enricherInfoList,
                              EntityDataServiceClientProvider provider) {
@@ -31,7 +32,7 @@ public class EnrichmentProcessor {
       synchronized (EnrichmentProcessor.class) {
         if (enrichmentArrivalTimer == null) {
           enrichmentArrivalTimer = PlatformMetricsRegistry
-              .registerTimer(DataFlowMetrics.ENRICHMENT_ARRIVAL_LAG.toString(), new HashMap<>());
+              .registerTimer(ENRICHMENT_ARRIVAL_LAG, new HashMap<>());
         }
       }
     }
@@ -51,8 +52,8 @@ public class EnrichmentProcessor {
    * Enriches the Trace by Invoking various Enrichers registered in
    */
   public void process(StructuredTrace trace) {
-    DataFlowMetricUtil.reportArrivalLagAndInsertTimestamp(trace, enrichmentArrivalTimer,
-        DataFlowMetrics.ENRICHMENT_ARRIVAL_TIME);
+    DataflowMetricUtils.reportArrivalLagAndInsertTimestamp(trace, enrichmentArrivalTimer,
+        DataflowMetric.ENRICHMENT_ARRIVAL_TIME);
     AvroToJsonLogger.log(LOG, "Structured Trace before all the enrichment is: {}", trace);
     for (Enricher enricher : enrichers) {
       applyEnricher(enricher, trace);
