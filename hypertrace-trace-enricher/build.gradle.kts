@@ -7,12 +7,21 @@ plugins {
 }
 
 repositories {
-  // Need this to fetch confluent's kafka-avro-serializer dependency
+  // Needed for io.confluent:kafka-avro-serializer
   maven("http://packages.confluent.io/maven")
 }
 
 application {
   mainClassName = "org.hypertrace.core.serviceframework.PlatformServiceLauncher"
+}
+
+hypertraceDocker {
+  defaultImage {
+    javaApplication {
+      serviceName.set("${project.name}")
+      adminPort.set(8099)
+    }
+  }
 }
 
 // Config for gw run to be able to run this locally. Just execute gw run here on Intellij or on the console.
