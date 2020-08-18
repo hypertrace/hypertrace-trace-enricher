@@ -22,11 +22,9 @@ import org.slf4j.LoggerFactory;
 public class EnrichmentProcessor {
 
   private static final Logger LOG = LoggerFactory.getLogger(EnrichmentProcessor.class);
-  private static final Timer enrichmentArrivalTimer;
   private static final String ENRICHMENT_ARRIVAL_LAG = "enrichment.arrival.lag";
-  static {
-    enrichmentArrivalTimer = PlatformMetricsRegistry.registerTimer(ENRICHMENT_ARRIVAL_LAG, new HashMap<>());
-  }
+  private static final Timer enrichmentArrivalTimer =
+      PlatformMetricsRegistry.registerTimer(ENRICHMENT_ARRIVAL_LAG, new HashMap<>());
   private final List<Enricher> enrichers = new ArrayList<>();
   public EnrichmentProcessor(List<EnricherInfo> enricherInfoList,
                              EntityDataServiceClientProvider provider) {
