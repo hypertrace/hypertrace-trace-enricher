@@ -58,7 +58,7 @@ dependencies {
   implementation("io.confluent:kafka-avro-serializer:5.5.0")
 
   // Required for the GRPC clients.
-  runtimeOnly("io.grpc:grpc-netty-shaded:1.30.2")
+  runtimeOnly("io.grpc:grpc-netty-shaded:1.31.1")
   // Logging
   implementation("org.slf4j:slf4j-api:1.7.30")
   runtimeOnly("org.apache.logging.log4j:log4j-slf4j-impl:2.13.3")
