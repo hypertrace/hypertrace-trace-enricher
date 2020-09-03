@@ -27,7 +27,7 @@ We have different enrichers in the pipeline and all those enrichers are executed
 
 trace-enrichers are being used to enrich spans/traces with entity information. `hypertrace-trace-enricher` service talks to `entity-service` which fetches entity information from Mongo as required. 
 
-For example, Let's say we got span which has http method related attribute `method: /api/v1/user?name`. So, in this case, if we already have api entity which refers to `/api/v1/user`, we fetch the of that entity and add it to span. Now, span will have one more attribute like this `method:/api/v1/user?name, api_is:1234`.
+For example, Let's say we got span which has http method related attribute `method: /api/v1/user?name`. So, in this case, if we already have Endpoint entity which refers to `/api/v1/user`, we fetch the id of that entity and add it to span. Now, span will have one more attribute like this `method:/api/v1/user?name, api_id:1234`.
 
 ## Building locally
 `hypertrace-trace-enricher` uses gradlew to compile/install/distribute. Gradle wrapper is already part of the source code. To build `hypertrace-trace-enricher`, run:
