@@ -8,16 +8,16 @@ A streaming job that enriches the incoming spans with identified entities like A
 ## trace-enrichers
 
 We have different enrichers in the pipeline and all those enrichers are executed as a DAG. The list of enrichers Hypertrace uses is as follows:
-- SpanTypeAttributeEnricher
-- ApiStatusEnricher
-- EndpointEnricher
-- TransactionNameEnricher
-- ApiBoundaryTypeAttributeEnricher
-- ErrorsAndExceptionsEnricher
-- BackendEntityEnricher
-- HttpAttributeEnricher
-- DefaultServiceEntityEnricher 
-- UserAgentSpanEnricher
+- `SpanTypeAttributeEnricher`
+- `ApiStatusEnricher`
+- `EndpointEnricher`
+- `TransactionNameEnricher`
+- `ApiBoundaryTypeAttributeEnricher`
+- `ErrorsAndExceptionsEnricher`
+- `BackendEntityEnricher`
+- `HttpAttributeEnricher`
+- `DefaultServiceEntityEnricher` 
+- `UserAgentSpanEnricher`
 
 ## How do we use trace-enrichers?
 
