@@ -62,7 +62,7 @@ dependencies {
 
   implementation("org.hypertrace.core.datamodel:data-model:0.1.4")
   implementation("org.hypertrace.core.spannormalizer:raw-span-constants:0.1.2")
-  implementation("org.hypertrace.entity.service:entity-service-api:0.1.4")
+  implementation("org.hypertrace.entity.service:entity-service-api:0.1.17")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
   testImplementation("org.mockito:mockito-core:3.3.3")
