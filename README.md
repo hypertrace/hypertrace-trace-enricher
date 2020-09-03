@@ -33,7 +33,7 @@ For example, Let's say we got span which has http method related attribute `meth
 `hypertrace-trace-enricher` uses gradlew to compile/install/distribute. Gradle wrapper is already part of the source code. To build `hypertrace-trace-enricher`, run:
 
 ```
-./gradlew clean build dockerBuildImages
+./gradlew dockerBuildImages
 ```
 
 ## Docker Image Source:
