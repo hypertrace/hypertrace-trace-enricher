@@ -39,7 +39,8 @@ spec:
     {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          #image: "{{ .Values.image.repository }}:{{ .Chart.AppVersion }}"
+          image: traceableai-docker-dev.jfrog.io/hypertrace/hypertrace-trace-enricher:0.1.18-SNAPSHOT
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: admin-port

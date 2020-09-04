@@ -56,6 +56,7 @@ dependencies {
   implementation("org.apache.flink:flink-avro:1.7.0")
   implementation("org.apache.flink:flink-streaming-java_2.11:1.7.0")
   implementation("io.confluent:kafka-avro-serializer:5.5.0")
+  implementation("org.hypertrace.core.kafkastreams.framework:kafka-streams-framework:0.1.0-SNAPSHOT")
 
   // Required for the GRPC clients.
   runtimeOnly("io.grpc:grpc-netty-shaded:1.31.1")

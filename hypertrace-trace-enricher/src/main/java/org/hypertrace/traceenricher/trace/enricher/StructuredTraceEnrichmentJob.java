@@ -1,141 +1,94 @@
 package org.hypertrace.traceenricher.trace.enricher;
 
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.ENRICHER_CONFIG_TEMPLATE;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.ENRICHER_NAMES_CONFIG;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.FLINK_JOB;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.FLINK_SINK_CONFIG_PATH;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.FLINK_SOURCE_CONFIG_PATH;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.KAFKA_CONFIG_PATH;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.LOG_FAILURES_CONFIG;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.METRICS;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.PARALLELISM;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.SCHEMA_REGISTRY_CONFIG_PATH;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnrichmentJob.JobConfig.TOPIC_NAME_CONFIG;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.ENRICHER_CONFIGS_KEY;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.ENRICHER_CONFIG_TEMPLATE;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.ENRICHER_NAMES_CONFIG_KEY;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.INPUT_TOPIC_CONFIG_KEY;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.JOB_CONFIG;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.KAFKA_STREAMS_CONFIG_KEY;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.OUTPUT_TOPIC_CONFIG_KEY;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.SCHEMA_REGISTRY_CONFIG_KEY;
 
 import com.typesafe.config.Config;
-import de.javakaffee.kryoserializers.UnmodifiableCollectionsSerializer;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.streaming.api.TimeCharacteristic;
-import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.ProcessFunction;
-import org.apache.flink.streaming.connectors.kafka.FlinkKafkaConsumer;
+import org.apache.kafka.common.serialization.Serdes;
+import org.apache.kafka.streams.StreamsBuilder;
+import org.apache.kafka.streams.StreamsConfig;
+import org.apache.kafka.streams.errors.LogAndContinueExceptionHandler;
+import org.apache.kafka.streams.kstream.Consumed;
+import org.apache.kafka.streams.kstream.Produced;
 import org.hypertrace.core.datamodel.StructuredTrace;
-import org.hypertrace.core.flinkutils.avro.RegistryBasedAvroSerde;
-import org.hypertrace.core.flinkutils.utils.FlinkUtils;
-import org.hypertrace.core.serviceframework.background.PlatformBackgroundJob;
+import org.hypertrace.core.kafkastreams.framework.KafkaStreamsApp;
+import org.hypertrace.core.kafkastreams.framework.serdes.SchemaRegistryBasedAvroSerde;
+import org.hypertrace.core.kafkastreams.framework.timestampextractors.UseWallclockTimeOnInvalidTimestamp;
 import org.hypertrace.core.serviceframework.config.ConfigUtils;
-import org.hypertrace.traceenricher.enrichment.EnrichmentRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-public class StructuredTraceEnrichmentJob implements PlatformBackgroundJob {
+public class StructuredTraceEnrichmentJob extends KafkaStreamsApp {
+  private static final Logger logger = LoggerFactory.getLogger(StructuredTraceEnrichmentJob.class);
+  private Map<String, String> schemaRegistryConfig;
 
-  private final String inputTopic;
-  private final String outputTopic;
-  private final Properties kafkaConsumerConfig;
-  private final Properties kafkaProducerConfig;
-  private final Map<String, String> sourceSchemaRegistryConfig;
-  private final Map<String, String> sinkSchemaRegistryConfig;
-  private final boolean logFailuresOnly;
-  private final ProcessFunction processFunction;
+  protected StructuredTraceEnrichmentJob(Config jobConfig) {
+    super(jobConfig);
+  }
 
-  private final Map<String, String> metricsConfig;
-  private StreamExecutionEnvironment environment;
+  @Override
+  protected StreamsBuilder buildTopology(Properties properties, StreamsBuilder streamsBuilder) {
+    SchemaRegistryBasedAvroSerde<StructuredTrace> traceSerde = new SchemaRegistryBasedAvroSerde<>(StructuredTrace.class);
+    traceSerde.configure(schemaRegistryConfig, false);
 
-  public StructuredTraceEnrichmentJob(Config configs) {
-    Config jobConfig = configs.getConfig(FLINK_JOB);
-    metricsConfig = ConfigUtils.getFlatMapConfig(jobConfig, METRICS);
+    String inputTopic = properties.getProperty(INPUT_TOPIC_CONFIG_KEY);
+    String outputTopic = properties.getProperty(OUTPUT_TOPIC_CONFIG_KEY);
 
-    Config flinkSourceConfig = configs.getConfig(FLINK_SOURCE_CONFIG_PATH);
-    this.inputTopic = flinkSourceConfig.getString(TOPIC_NAME_CONFIG);
-    this.kafkaConsumerConfig = ConfigUtils.getPropertiesConfig(flinkSourceConfig, KAFKA_CONFIG_PATH);
-    this.sourceSchemaRegistryConfig = ConfigUtils.getFlatMapConfig(flinkSourceConfig, SCHEMA_REGISTRY_CONFIG_PATH);
+    streamsBuilder
+        .stream(inputTopic, Consumed.with(Serdes.String(), Serdes.serdeFrom(traceSerde, traceSerde)))
+        .transform(StructuredTraceEnrichProcessor::new)
+        .to(outputTopic, Produced.with(Serdes.String(), Serdes.serdeFrom(traceSerde, traceSerde)));
 
-    Config flinkSinkConfig = configs.getConfig(FLINK_SINK_CONFIG_PATH);
-    this.outputTopic = flinkSinkConfig.getString(TOPIC_NAME_CONFIG);
-    this.logFailuresOnly = ConfigUtils.getBooleanConfig(flinkSinkConfig, LOG_FAILURES_CONFIG, true);
-    this.kafkaProducerConfig = ConfigUtils.getPropertiesConfig(flinkSinkConfig, KAFKA_CONFIG_PATH);
-    this.sinkSchemaRegistryConfig = ConfigUtils.getFlatMapConfig(flinkSinkConfig, SCHEMA_REGISTRY_CONFIG_PATH);
+    return streamsBuilder;
+  }
 
-    List<String> enrichers = configs.getStringList(ENRICHER_NAMES_CONFIG);
+  @Override
+  protected Properties getStreamsConfig(Config config) {
+    Properties properties = new Properties();
+
+    schemaRegistryConfig = ConfigUtils.getFlatMapConfig(config, SCHEMA_REGISTRY_CONFIG_KEY);
+    properties.putAll(schemaRegistryConfig);
+
+    properties.put(INPUT_TOPIC_CONFIG_KEY, config.getString(INPUT_TOPIC_CONFIG_KEY));
+    properties.put(OUTPUT_TOPIC_CONFIG_KEY, config.getString(OUTPUT_TOPIC_CONFIG_KEY));
+    properties.putAll(ConfigUtils.getFlatMapConfig(config, KAFKA_STREAMS_CONFIG_KEY));
+
+    List<String> enrichers = config.getStringList(ENRICHER_NAMES_CONFIG_KEY);
 
     Map<String, Config> enricherConfigs = new LinkedHashMap<>();
     for (String enricher : enrichers) {
-      Config enricherConfig = configs.getConfig(getEnricherConfigPath(enricher));
+      Config enricherConfig = config.getConfig(getEnricherConfigPath(enricher));
       enricherConfigs.put(enricher, enricherConfig);
     }
-    this.processFunction = getEnrichmentProcessFunction(enricherConfigs);
-    environment = FlinkUtils.getExecutionEnvironment(metricsConfig);
 
-    int parallelism = jobConfig.getInt(PARALLELISM);
-    environment.setParallelism(parallelism);
+    properties.put(ENRICHER_CONFIGS_KEY, enricherConfigs);
+
+    properties.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
+        UseWallclockTimeOnInvalidTimestamp.class);
+    properties.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+        LogAndContinueExceptionHandler.class);
+
+    properties.put(JOB_CONFIG, config);
+
+    return properties;
   }
 
   @Override
-  public void run() throws Exception {
-    environment.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-    environment.getConfig()
-        .addDefaultKryoSerializer(Class.forName("java.util.Collections$UnmodifiableCollection"),
-            UnmodifiableCollectionsSerializer.class);
-    environment.getConfig().enableForceKryo();
-
-    DeserializationSchema<StructuredTrace> deserializationSchema = new RegistryBasedAvroSerde<>(inputTopic,
-        StructuredTrace.class, sourceSchemaRegistryConfig
-    );
-    FlinkKafkaConsumer<?> structuredTraceKafkaConsumer =
-        FlinkUtils.createKafkaConsumer(inputTopic, deserializationSchema, kafkaConsumerConfig);
-
-    DataStream<?> inputStream = environment.addSource(structuredTraceKafkaConsumer);
-
-    final SingleOutputStreamOperator<SerializationSchema> outputStream = inputStream.process(processFunction);
-
-    SerializationSchema<StructuredTrace> serializationSchema = new RegistryBasedAvroSerde<>(outputTopic,
-        StructuredTrace.class, sinkSchemaRegistryConfig
-    );
-
-    outputStream.addSink(
-        FlinkUtils.getFlinkKafkaProducer(
-            outputTopic,
-            serializationSchema,
-            kafkaProducerConfig,
-            logFailuresOnly
-        )
-    );
-    environment.execute("trace-enricher");
+  protected Logger getLogger() {
+    return logger;
   }
 
-  @Override
-  public void stop() {
-
-  }
-
-  private static String getEnricherConfigPath(String enricher) {
+  private String getEnricherConfigPath(String enricher) {
     return String.format(ENRICHER_CONFIG_TEMPLATE, enricher);
-  }
-
-  private static ProcessFunction getEnrichmentProcessFunction(Map<String, Config> enricherConfigs) {
-    EnrichmentRegistry registry = new EnrichmentRegistry();
-    registry.registerEnrichers(enricherConfigs);
-    return new StructuredTraceEnrichProcessor(registry);
-  }
-
-  static class JobConfig {
-    public static final String FLINK_SOURCE_CONFIG_PATH = "flink.source";
-    public static final String FLINK_SINK_CONFIG_PATH = "flink.sink";
-    public static final String TOPIC_NAME_CONFIG = "topic";
-    public static final String KAFKA_CONFIG_PATH = "kafka";
-    public static final String SCHEMA_REGISTRY_CONFIG_PATH = "schema.registry";
-    public static final String LOG_FAILURES_CONFIG = "log.failures.only";
-
-    public static final String ENRICHER_NAMES_CONFIG = "enricher.names";
-    public static final String ENRICHER_CONFIG_TEMPLATE = "enricher.%s";
-    public static final String FLINK_JOB = "flink.job";
-    public static final String METRICS = "metrics";
-    public static final String PARALLELISM = "parallelism";
   }
 }

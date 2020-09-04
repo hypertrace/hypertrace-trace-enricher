@@ -1,34 +1,40 @@
 package org.hypertrace.traceenricher.trace.enricher;
 
-import org.apache.flink.streaming.api.functions.ProcessFunction;
-import org.apache.flink.util.Collector;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.ENRICHER_CONFIGS_KEY;
+
+import com.typesafe.config.Config;
+import java.util.Map;
+import org.apache.kafka.streams.KeyValue;
+import org.apache.kafka.streams.kstream.Transformer;
+import org.apache.kafka.streams.processor.ProcessorContext;
 import org.hypertrace.core.datamodel.StructuredTrace;
 import org.hypertrace.entity.data.service.client.DefaultEdsClientProvider;
 import org.hypertrace.traceenricher.enrichment.EnrichmentProcessor;
 import org.hypertrace.traceenricher.enrichment.EnrichmentRegistry;
 
-/**
- * The Processor function to enrich a StructuredTrace.
- */
-public class StructuredTraceEnrichProcessor extends
-    ProcessFunction<StructuredTrace, StructuredTrace> {
+public class StructuredTraceEnrichProcessor implements
+    Transformer<String, StructuredTrace, KeyValue<String, StructuredTrace>> {
 
-  private static EnrichmentProcessor processor = null;
+  private EnrichmentProcessor processor;
 
-  public StructuredTraceEnrichProcessor(EnrichmentRegistry registry) {
-    if (processor == null) {
-      synchronized (StructuredTraceEnrichProcessor.class) {
-        if (processor == null) {
-          processor = new EnrichmentProcessor(registry.getOrderedRegisteredEnrichers(),
-              new DefaultEdsClientProvider());
-        }
-      }
-    }
+  @Override
+  public void init(ProcessorContext context) {
+    Map<String, Config> enricherConfigs = (Map<String, Config>) context.appConfigs()
+        .get(ENRICHER_CONFIGS_KEY);
+    EnrichmentRegistry enrichmentRegistry = new EnrichmentRegistry();
+    enrichmentRegistry.registerEnrichers(enricherConfigs);
+
+    processor = new EnrichmentProcessor(enrichmentRegistry.getOrderedRegisteredEnrichers(),
+        new DefaultEdsClientProvider());
   }
 
   @Override
-  public void processElement(StructuredTrace value, Context ctx, Collector<StructuredTrace> out) {
+  public KeyValue<String, StructuredTrace> transform(String key, StructuredTrace value) {
     processor.process(value);
-    out.collect(value);
+    return new KeyValue<>(null, value);
+  }
+
+  @Override
+  public void close() {
   }
 }
