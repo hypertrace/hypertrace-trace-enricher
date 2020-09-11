@@ -55,7 +55,6 @@ Change the tag for `hypertrace-trace-enricher ` from `:main` to `:test` in [dock
     container_name: hypertrace-trace-enricher
     ...
 ```
-
 and then run `docker-compose up` to test the setup.
 
 ## Docker Image Source:
