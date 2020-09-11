@@ -60,3 +60,6 @@ and then run `docker-compose up` to test the setup.
 
 ## Docker Image Source:
 - [DockerHub > Hypertrace trace enricher](https://hub.docker.com/r/hypertrace/hypertrace-trace-enricher)
+
+## Contributing
+see [CONTRIBUTING](/CONTRIBUTING.md).
