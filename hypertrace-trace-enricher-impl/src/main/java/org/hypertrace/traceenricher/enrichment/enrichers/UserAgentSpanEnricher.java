@@ -56,10 +56,17 @@ public class UserAgentSpanEnricher extends AbstractTraceEnricher {
   }
 
   private Optional<String> getUserAgent(Event event) {
-    if (event.getHttp() != null
-        && event.getHttp().getRequest() != null
-        && !StringUtils.isEmpty(event.getHttp().getRequest().getUserAgent())) {
-      return Optional.of(event.getHttp().getRequest().getUserAgent());
+    if (event.getHttp() != null && event.getHttp().getRequest() != null) {
+      // prefer user agent from headers
+      if (event.getHttp().getRequest().getHeaders() != null
+          && !StringUtils.isEmpty(event.getHttp().getRequest().getHeaders().getUserAgent())) {
+        return Optional.of(event.getHttp().getRequest().getHeaders().getUserAgent());
+      }
+
+      // fallback to user agent on the request
+      if (!StringUtils.isEmpty(event.getHttp().getRequest().getUserAgent())) {
+        return Optional.of(event.getHttp().getRequest().getUserAgent());
+      }
     }
 
     return Optional.empty();
