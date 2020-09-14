@@ -10,10 +10,10 @@ import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnriche
 import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.SCHEMA_REGISTRY_CONFIG_KEY;
 
 import com.typesafe.config.Config;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Properties;
 import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.kafka.streams.StreamsConfig;
@@ -34,20 +34,22 @@ public class TraceEnricher extends KafkaStreamsApp {
 
   private static final Logger logger = LoggerFactory.getLogger(TraceEnricher.class);
   private Map<String, String> schemaRegistryConfig;
+  private String inputTopic;
+  private String outputTopic;
 
   public TraceEnricher(ConfigClient configClient) {
     super(configClient);
   }
 
   @Override
-  public StreamsBuilder buildTopology(Properties properties, StreamsBuilder streamsBuilder,
+  public StreamsBuilder buildTopology(Map<String, Object> streamsConfig, StreamsBuilder streamsBuilder,
       Map<String, KStream<?, ?>> inputStreams) {
     SchemaRegistryBasedAvroSerde<StructuredTrace> traceSerde = new SchemaRegistryBasedAvroSerde<>(
         StructuredTrace.class);
     traceSerde.configure(schemaRegistryConfig, false);
 
-    String inputTopic = properties.getProperty(INPUT_TOPIC_CONFIG_KEY);
-    String outputTopic = properties.getProperty(OUTPUT_TOPIC_CONFIG_KEY);
+    inputTopic = (String) streamsConfig.get(INPUT_TOPIC_CONFIG_KEY);
+    outputTopic = (String) streamsConfig.get(OUTPUT_TOPIC_CONFIG_KEY);
 
     KStream<String, StructuredTrace> inputStream = (KStream<String, StructuredTrace>) inputStreams
         .get(inputTopic);
@@ -66,15 +68,15 @@ public class TraceEnricher extends KafkaStreamsApp {
   }
 
   @Override
-  public Properties getStreamsConfig(Config config) {
-    Properties properties = new Properties();
+  public Map<String, Object> getStreamsConfig(Config config) {
+    Map<String, Object> streamsConfig = new HashMap<>();
 
     schemaRegistryConfig = ConfigUtils.getFlatMapConfig(config, SCHEMA_REGISTRY_CONFIG_KEY);
-    properties.putAll(schemaRegistryConfig);
+    streamsConfig.putAll(schemaRegistryConfig);
 
-    properties.put(INPUT_TOPIC_CONFIG_KEY, config.getString(INPUT_TOPIC_CONFIG_KEY));
-    properties.put(OUTPUT_TOPIC_CONFIG_KEY, config.getString(OUTPUT_TOPIC_CONFIG_KEY));
-    properties.putAll(ConfigUtils.getFlatMapConfig(config, KAFKA_STREAMS_CONFIG_KEY));
+    streamsConfig.put(INPUT_TOPIC_CONFIG_KEY, config.getString(INPUT_TOPIC_CONFIG_KEY));
+    streamsConfig.put(OUTPUT_TOPIC_CONFIG_KEY, config.getString(OUTPUT_TOPIC_CONFIG_KEY));
+    streamsConfig.putAll(ConfigUtils.getFlatMapConfig(config, KAFKA_STREAMS_CONFIG_KEY));
 
     List<String> enrichers = config.getStringList(ENRICHER_NAMES_CONFIG_KEY);
 
@@ -84,21 +86,31 @@ public class TraceEnricher extends KafkaStreamsApp {
       enricherConfigs.put(enricher, enricherConfig);
     }
 
-    properties.put(ENRICHER_CONFIGS_KEY, enricherConfigs);
+    streamsConfig.put(ENRICHER_CONFIGS_KEY, enricherConfigs);
 
-    properties.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
+    streamsConfig.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG,
         UseWallclockTimeOnInvalidTimestamp.class);
-    properties.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
+    streamsConfig.put(StreamsConfig.DEFAULT_DESERIALIZATION_EXCEPTION_HANDLER_CLASS_CONFIG,
         LogAndContinueExceptionHandler.class);
 
-    properties.put(JOB_CONFIG, config);
+    streamsConfig.put(JOB_CONFIG, config);
 
-    return properties;
+    return streamsConfig;
   }
 
   @Override
   public Logger getLogger() {
     return logger;
+  }
+
+  @Override
+  public List<String> getInputTopics() {
+    return List.of(inputTopic);
+  }
+
+  @Override
+  public List<String> getOutputTopics() {
+    return List.of(outputTopic);
   }
 
   private String getEnricherConfigPath(String enricher) {
