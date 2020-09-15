@@ -6,7 +6,6 @@ metadata:
     release: {{ .Release.Name }}
 data:
   application.conf: |-
-
     kafka.streams.config {
       application.id = structured-traces-enrichment-job
       metrics.recording.level = "{{ .Values.traceEnricherConfig.kafka.streams.config.metricsRecordingLevel }}"
@@ -16,11 +15,8 @@ data:
       bootstrap.servers = "{{ .Values.traceEnricherConfig.kafka.streams.config.bootstrapServers }}"
       auto.offset.reset = "latest"
       auto.commit.interval.ms = 5000
-    }
-
-    schema.registry.config {
       schema.registry.url = "{{ .Values.traceEnricherConfig.schema.registry.config.schemaRegistryUrl }}"
-      specific.avro.reader = true
+
     }
 
     enricher {
