@@ -4,12 +4,14 @@ import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnriche
 import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.ENRICHER_CONFIG_TEMPLATE;
 import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.ENRICHER_NAMES_CONFIG_KEY;
 import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.INPUT_TOPIC_CONFIG_KEY;
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.JOB_CONFIG;
+
 import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.KAFKA_STREAMS_CONFIG_KEY;
 import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.OUTPUT_TOPIC_CONFIG_KEY;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.STRUCTURED_TRACES_ENRICHMENT_JOB_CONFIG;
 
 import com.typesafe.config.Config;
-import java.util.Arrays;
+import java.util.Collections;
+
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,10 +37,14 @@ public class TraceEnricher extends KafkaStreamsApp {
   }
 
   @Override
-  public StreamsBuilder buildTopology(Map<String, Object> properties, StreamsBuilder streamsBuilder,
+
+  public StreamsBuilder buildTopology(Map<String, Object> streamsProperties,
+      StreamsBuilder streamsBuilder,
       Map<String, KStream<?, ?>> inputStreams) {
-    String inputTopic = getAppConfig().getString(INPUT_TOPIC_CONFIG_KEY);
-    String outputTopic = getAppConfig().getString(OUTPUT_TOPIC_CONFIG_KEY);
+
+    Config jobConfig = getJobConfig(streamsProperties);
+    String inputTopic = jobConfig.getString(INPUT_TOPIC_CONFIG_KEY);
+    String outputTopic = jobConfig.getString(OUTPUT_TOPIC_CONFIG_KEY);
 
     KStream<String, StructuredTrace> inputStream = (KStream<String, StructuredTrace>) inputStreams
         .get(inputTopic);
@@ -57,22 +63,23 @@ public class TraceEnricher extends KafkaStreamsApp {
 
   @Override
   public Map<String, Object> getStreamsConfig(Config config) {
-    Map<String, Object> properties = new HashMap<>();
-
-    properties.putAll(ConfigUtils.getFlatMapConfig(config, KAFKA_STREAMS_CONFIG_KEY));
+    Map<String, Object> properties = new HashMap<>(
+        ConfigUtils.getFlatMapConfig(config, KAFKA_STREAMS_CONFIG_KEY));
 
     List<String> enrichers = config.getStringList(ENRICHER_NAMES_CONFIG_KEY);
-
     Map<String, Config> enricherConfigs = new LinkedHashMap<>();
     for (String enricher : enrichers) {
       Config enricherConfig = config.getConfig(getEnricherConfigPath(enricher));
       enricherConfigs.put(enricher, enricherConfig);
     }
-
     properties.put(ENRICHER_CONFIGS_KEY, enricherConfigs);
-    properties.put(JOB_CONFIG, config);
-
     return properties;
+  }
+
+
+  @Override
+  public String getJobConfigKey() {
+    return STRUCTURED_TRACES_ENRICHMENT_JOB_CONFIG;
   }
 
   @Override
@@ -81,13 +88,19 @@ public class TraceEnricher extends KafkaStreamsApp {
   }
 
   @Override
-  public List<String> getInputTopics() {
-    return Arrays.asList(getAppConfig().getString(INPUT_TOPIC_CONFIG_KEY));
+  public List<String> getInputTopics(Map<String, Object> properties) {
+    Config jobConfig = getJobConfig(properties);
+    return Collections.singletonList(jobConfig.getString(INPUT_TOPIC_CONFIG_KEY));
   }
 
   @Override
-  public List<String> getOutputTopics() {
-    return Arrays.asList(getAppConfig().getString(OUTPUT_TOPIC_CONFIG_KEY));
+  public List<String> getOutputTopics(Map<String, Object> properties) {
+    Config jobConfig = getJobConfig(properties);
+    return Collections.singletonList(jobConfig.getString(OUTPUT_TOPIC_CONFIG_KEY));
+  }
+
+  private Config getJobConfig(Map<String, Object> properties) {
+    return (Config) properties.get(getJobConfigKey());
   }
 
   private String getEnricherConfigPath(String enricher) {

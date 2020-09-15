@@ -15,17 +15,22 @@ import org.hypertrace.traceenricher.enrichment.EnrichmentRegistry;
 public class StructuredTraceEnrichProcessor implements
     Transformer<String, StructuredTrace, KeyValue<String, StructuredTrace>> {
 
-  private EnrichmentProcessor processor;
+  private static EnrichmentProcessor processor = null;
 
   @Override
   public void init(ProcessorContext context) {
-    Map<String, Config> enricherConfigs = (Map<String, Config>) context.appConfigs()
-        .get(ENRICHER_CONFIGS_KEY);
-    EnrichmentRegistry enrichmentRegistry = new EnrichmentRegistry();
-    enrichmentRegistry.registerEnrichers(enricherConfigs);
-
-    processor = new EnrichmentProcessor(enrichmentRegistry.getOrderedRegisteredEnrichers(),
-        new DefaultEdsClientProvider());
+    if (processor == null) {
+      synchronized (StructuredTraceEnrichProcessor.class) {
+        if (processor == null) {
+          Map<String, Config> enricherConfigs = (Map<String, Config>) context.appConfigs()
+              .get(ENRICHER_CONFIGS_KEY);
+          EnrichmentRegistry enrichmentRegistry = new EnrichmentRegistry();
+          enrichmentRegistry.registerEnrichers(enricherConfigs);
+          processor = new EnrichmentProcessor(enrichmentRegistry.getOrderedRegisteredEnrichers(),
+              new DefaultEdsClientProvider());
+        }
+      }
+    }
   }
 
   @Override
