@@ -8,5 +8,4 @@ public class StructuredTraceEnricherConstants {
   public static final String ENRICHER_NAMES_CONFIG_KEY = "enricher.names";
   public static final String ENRICHER_CONFIG_TEMPLATE = "enricher.%s";
   public static final String STRUCTURED_TRACES_ENRICHMENT_JOB_CONFIG = "structured-traces-enrichment-job";
-
 }
