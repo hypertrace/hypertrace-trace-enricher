@@ -301,4 +301,45 @@ public class UserAgentSpanEnricherTest extends AbstractAttributeEnricherTest {
         map.get(Constants.getEnrichedSpanConstant(UserAgent.USER_AGENT_BROWSER_VERSION))
             .getValue());
   }
+
+  @Test
+  public void should_fallbackToUserAgent_fromRequest() {
+    String userAgent =
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3)"
+            + " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36";
+
+    Event e = createMockEvent();
+    when(e.getHttp())
+        .thenReturn(
+            Http.newBuilder()
+                .setRequest(
+                    Request.newBuilder()
+                        .setUserAgent(userAgent)
+                        .build())
+                .build());
+    enricher.enrichEvent(null, e);
+
+    Map<String, AttributeValue> map = e.getEnrichedAttributes().getAttributeMap();
+    assertEquals(6, map.size());
+    assertEquals(6, map.size());
+    assertEquals(
+        "Chrome", map.get(Constants.getEnrichedSpanConstant(UserAgent.USER_AGENT_NAME)).getValue());
+    assertEquals(
+        "Browser",
+        map.get(Constants.getEnrichedSpanConstant(UserAgent.USER_AGENT_TYPE)).getValue());
+    assertEquals(
+        "Personal computer",
+        map.get(Constants.getEnrichedSpanConstant(UserAgent.USER_AGENT_DEVICE_CATEGORY))
+            .getValue());
+    assertEquals(
+        "OS X",
+        map.get(Constants.getEnrichedSpanConstant(UserAgent.USER_AGENT_OS_NAME)).getValue());
+    assertEquals(
+        "10.14.3",
+        map.get(Constants.getEnrichedSpanConstant(UserAgent.USER_AGENT_OS_VERSION)).getValue());
+    assertEquals(
+        "73.0.3683.103",
+        map.get(Constants.getEnrichedSpanConstant(UserAgent.USER_AGENT_BROWSER_VERSION))
+            .getValue());
+  }
 }
