@@ -14,11 +14,10 @@ replicaCount: 1
 maxUnavailable: 0
 
 image:
-  repository: traceableai-docker-dev.jfrog.io/hypertrace/hypertrace-trace-enricher
-  # repository: hypertrace/hypertrace-trace-enricher
+  repository: hypertrace/hypertrace-trace-enricher
   pullPolicy: Always
 
-imagePullSecrets: [name: regcred-dev]
+imagePullSecrets: []
 
 nodeLabels: {}
 
@@ -75,7 +74,6 @@ traceEnricherConfig:
     registry:
       config:
         schemaRegistryUrl: "http://schema-registry-service:8081"
-
 
 logConfig:
   name: hypertrace-trace-enricher-log-config
