@@ -16,6 +16,7 @@ import org.apache.kafka.streams.TopologyTestDriver;
 import org.hypertrace.core.datamodel.Attributes;
 import org.hypertrace.core.datamodel.StructuredTrace;
 import org.hypertrace.core.datamodel.shared.HexUtils;
+import org.hypertrace.core.kafkastreams.framework.serdes.AvroSerde;
 import org.hypertrace.core.serviceframework.config.ConfigClientFactory;
 import org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants;
 import org.hypertrace.traceenricher.trace.enricher.TraceEnricher;
@@ -60,12 +61,7 @@ public class HypertraceTraceEnricherTest {
     // create topology test driver for trace-enricher
     TopologyTestDriver topologyTestDriver = new TopologyTestDriver(streamsBuilder.build(), props);
 
-    // make sure the schema registry url starts with 'mock://' including the one specified in application.conf
-    Serde<StructuredTrace> htStructuredTraceSerde =
-        new SpecificAvroSerde<>();
-    htStructuredTraceSerde.configure(
-        Map.of(AbstractKafkaSchemaSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, "mock://localhost:8081"),
-        false);
+    Serde<StructuredTrace> htStructuredTraceSerde = new AvroSerde<>();
 
     // create input topic for HT-model StructuredTrace
     TestInputTopic<String, StructuredTrace> inputTopic =
