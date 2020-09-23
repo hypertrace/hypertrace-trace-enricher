@@ -11,7 +11,7 @@ data:
       metrics.recording.level = "{{ .Values.traceEnricherConfig.kafka.streams.config.metricsRecordingLevel }}"
       num.stream.threads = "{{ .Values.traceEnricherConfig.kafka.streams.config.numStreamThreads }}"
       bootstrap.servers = "{{ .Values.traceEnricherConfig.kafka.streams.config.bootstrapServers }}"
-      schema.registry.url = "{{ .Values.traceEnricherConfig.schema.registry.config.schemaRegistryUrl }}"
+      schema.registry.url = "{{ .Values.traceEnricherConfig.kafka.streams.config.schemaRegistryUrl }}"
     }
 
     enricher {

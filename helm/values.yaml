@@ -70,9 +70,6 @@ traceEnricherConfig:
         metricsRecordingLevel: INFO
         numStreamThreads: 2
         bootstrapServers: "bootstrap:9092"
-  schema:
-    registry:
-      config:
         schemaRegistryUrl: "http://schema-registry-service:8081"
 
 logConfig:
