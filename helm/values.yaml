@@ -15,7 +15,7 @@ maxUnavailable: 0
 
 image:
   repository: hypertrace/hypertrace-trace-enricher
-  pullPolicy: Always
+  pullPolicy: IfNotPresent
 
 imagePullSecrets: []
 
