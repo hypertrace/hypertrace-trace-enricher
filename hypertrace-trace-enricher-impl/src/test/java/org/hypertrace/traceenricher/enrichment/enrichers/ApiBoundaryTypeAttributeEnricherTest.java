@@ -138,6 +138,13 @@ public class ApiBoundaryTypeAttributeEnricherTest extends AbstractAttributeEnric
 
   @Test
   public void testEnrichEventWithHostHeader() {
+    addEnrichedAttributeToEvent(innerEntrySpan, "host", AttributeValueCreator.create("testHost"));
+    target.enrichEvent(trace, innerEntrySpan);
+    Assertions.assertEquals(EnrichedSpanUtils.getHostHeader(innerEntrySpan), "testHost");
+  }
+
+  @Test
+  public void testEnrichEventWithHttpHostHeader() {
     addEnrichedAttributeToEvent(innerEntrySpan,
         RawSpanConstants.getValue(org.hypertrace.core.span.constants.v1.Http.HTTP_HOST),
         AttributeValueCreator.create("testHost"));

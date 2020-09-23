@@ -37,12 +37,14 @@ public class ApiBoundaryTypeAttributeEnricher extends AbstractTraceEnricher {
       EnrichedSpanConstants.getValue(BoundaryTypeValue.BOUNDARY_TYPE_VALUE_EXIT);
   private static final String X_FORWARDED_HOST_HEADER = "x-forwarded-host";
 
+  private static final String DEFAULT_HOST_HEADER = "host";
   private static final List<String> HOST_HEADER_ATTRIBUTES = ImmutableList.of(
       // The order of these constants is important because that enforces the priority for
       // different keys/headers.
       RawSpanConstants.getValue(org.hypertrace.core.span.constants.v1.Http.HTTP_REQUEST_HOST_HEADER),
       RawSpanConstants.getValue(org.hypertrace.core.span.constants.v1.Http.HTTP_REQUEST_AUTHORITY_HEADER),
       RawSpanConstants.getValue(org.hypertrace.core.span.constants.v1.Http.HTTP_HOST),
+      DEFAULT_HOST_HEADER,
       // In the cases where there are sidecar proxies, the host header might be set to localhost
       // while the original host will be moved to x-forwarded headers. Hence, read them too.
       X_FORWARDED_HOST_HEADER
