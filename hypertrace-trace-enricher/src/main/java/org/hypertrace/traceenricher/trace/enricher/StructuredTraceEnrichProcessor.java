@@ -1,8 +1,12 @@
 package org.hypertrace.traceenricher.trace.enricher;
 
-import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.ENRICHER_CONFIGS_KEY;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.ENRICHER_CONFIG_TEMPLATE;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.ENRICHER_NAMES_CONFIG_KEY;
+import static org.hypertrace.traceenricher.trace.enricher.StructuredTraceEnricherConstants.STRUCTURED_TRACES_ENRICHMENT_JOB_CONFIG_KEY;
 
 import com.typesafe.config.Config;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.kafka.streams.KeyValue;
 import org.apache.kafka.streams.kstream.Transformer;
@@ -22,8 +26,7 @@ public class StructuredTraceEnrichProcessor implements
     if (processor == null) {
       synchronized (StructuredTraceEnrichProcessor.class) {
         if (processor == null) {
-          Map<String, Config> enricherConfigs = (Map<String, Config>) context.appConfigs()
-              .get(ENRICHER_CONFIGS_KEY);
+          Map<String, Config> enricherConfigs = getEnricherConfigs(context.appConfigs());
           EnrichmentRegistry enrichmentRegistry = new EnrichmentRegistry();
           enrichmentRegistry.registerEnrichers(enricherConfigs);
           processor = new EnrichmentProcessor(enrichmentRegistry.getOrderedRegisteredEnrichers(),
@@ -41,5 +44,20 @@ public class StructuredTraceEnrichProcessor implements
 
   @Override
   public void close() {
+  }
+
+  private Map<String, Config> getEnricherConfigs(Map<String, Object> properties) {
+    Config jobConfig = (Config) properties.get(STRUCTURED_TRACES_ENRICHMENT_JOB_CONFIG_KEY);
+    List<String> enrichers = jobConfig.getStringList(ENRICHER_NAMES_CONFIG_KEY);
+    Map<String, Config> enricherConfigs = new LinkedHashMap<>();
+    for (String enricher : enrichers) {
+      Config enricherConfig = jobConfig.getConfig(getEnricherConfigPath(enricher));
+      enricherConfigs.put(enricher, enricherConfig);
+    }
+    return enricherConfigs;
+  }
+
+  private String getEnricherConfigPath(String enricher) {
+    return String.format(ENRICHER_CONFIG_TEMPLATE, enricher);
   }
 }
