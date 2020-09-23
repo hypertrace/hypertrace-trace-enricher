@@ -115,8 +115,12 @@ public class ApiTraceGraph {
           pair.getLeft().forEach(e -> remainingEventIds.remove(e.getEventId()));
           remainingEventIds.remove(event.getEventId());
         } else if (!StringUtils.equals(EnrichedSpanUtils.getSpanType(event), UNKNOWN_SPAN_KIND_VALUE)) {
-          LOGGER.warn("Non exit root span wasn't picked for ApiNode; traceId: {}, span: {}",
-              HexUtils.getHex(trace.getTraceId()), event);
+          LOGGER.warn("Non exit root span wasn't picked for ApiNode; traceId: {}, spanId: {}, spanName: {}, serviceName: {}",
+              HexUtils.getHex(trace.getTraceId()),
+              HexUtils.getHex(event.getEventId()),
+              event.getEventName(),
+              event.getServiceName()
+          );
         }
       }
     }
@@ -203,8 +207,18 @@ public class ApiTraceGraph {
                   exitBoundaryEvent, child);
               edgeBetweenApiNodes.ifPresent(apiNodeEventEdgeList::add);
             } else {
-              LOGGER.warn("Exit boundary event {} can only have entry boundary event as child {}",
-                  exitBoundaryEvent, child);
+              LOGGER.warn("Exit boundary event with eventId: {}, eventName: {}, serviceName: {}," +
+                      " can only have entry boundary event as child. Non-entry child:" +
+                      " childEventId: {}, childEventName: {}, childServiceName: {}." +
+                      " traceId for events: {}",
+                  HexUtils.getHex(exitBoundaryEvent.getEventId()),
+                  exitBoundaryEvent.getEventName(),
+                  exitBoundaryEvent.getServiceName(),
+                  HexUtils.getHex(child.getEventId()),
+                  child.getEventName(),
+                  child.getServiceName(),
+                  HexUtils.getHex(trace.getTraceId())
+              );
             }
           }
         }
