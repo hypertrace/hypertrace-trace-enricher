@@ -16,7 +16,7 @@ protobuf {
   }
   plugins {
     id("grpc_java") {
-      artifact = "io.grpc:protoc-gen-grpc-java:1.30.2"
+      artifact = "io.grpc:protoc-gen-grpc-java:1.31.1"
     }
 
     if (generateLocalGoGrpcFiles) {
@@ -60,9 +60,9 @@ sourceSets {
 dependencies {
   api("com.google.protobuf:protobuf-java-util:3.12.2")
 
-  implementation("org.hypertrace.core.datamodel:data-model:0.1.4")
+  implementation("org.hypertrace.core.datamodel:data-model:0.1.8")
   implementation("org.hypertrace.core.spannormalizer:raw-span-constants:0.1.2")
-  implementation("org.hypertrace.entity.service:entity-service-api:0.1.4")
+  implementation("org.hypertrace.entity.service:entity-service-api:0.1.17")
 
   testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
   testImplementation("org.mockito:mockito-core:3.3.3")
