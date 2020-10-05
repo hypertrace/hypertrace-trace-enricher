@@ -1,7 +1,5 @@
 package org.hypertrace.traceenricher.enrichment.enrichers;
 
-import java.util.Map;
-import java.util.Optional;
 import net.sf.uadetector.ReadableUserAgent;
 import net.sf.uadetector.UserAgentStringParser;
 import net.sf.uadetector.service.UADetectorServiceFactory;
@@ -14,7 +12,14 @@ import org.hypertrace.traceenricher.enrichedspan.constants.EnrichedSpanConstants
 import org.hypertrace.traceenricher.enrichedspan.constants.v1.UserAgent;
 import org.hypertrace.traceenricher.enrichment.AbstractTraceEnricher;
 
+import java.util.Map;
+import java.util.Optional;
+
 public class UserAgentSpanEnricher extends AbstractTraceEnricher {
+
+  static final String USER_AGENT_HEADER = "user-agent";
+  static final String HTTP_REQUEST_HEADER_PREFIX = "http.request.header.";
+  static final String RPC_REQUEST_METADATA_PREFIX = "rpc.request.metadata.";
   private UserAgentStringParser userAgentStringParser =
       UADetectorServiceFactory.getResourceModuleParser();
 

@@ -1,9 +1,19 @@
 package org.hypertrace.traceenricher.enrichment.enrichers;
 
+<<<<<<< HEAD
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
+=======
+import net.sf.uadetector.OperatingSystem;
+import net.sf.uadetector.OperatingSystemFamily;
+import net.sf.uadetector.ReadableDeviceCategory;
+import net.sf.uadetector.ReadableUserAgent;
+import net.sf.uadetector.UserAgent;
+import net.sf.uadetector.VersionNumber;
+import net.sf.uadetector.service.UADetectorServiceFactory;
+>>>>>>> Use named fields for enriching grpc info
 import org.hypertrace.core.datamodel.AttributeValue;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.eventfields.http.Http;
@@ -14,7 +24,20 @@ import org.hypertrace.traceenricher.util.Constants;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.Map;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
 public class UserAgentSpanEnricherTest extends AbstractAttributeEnricherTest {
+
+  private static final String USER_AGENT_HEADER =
+      UserAgentSpanEnricher.HTTP_REQUEST_HEADER_PREFIX + UserAgentSpanEnricher.USER_AGENT_HEADER;
+
+  private static final String RPC_USER_AGENT_HEADER =
+      UserAgentSpanEnricher.RPC_REQUEST_METADATA_PREFIX + UserAgentSpanEnricher.USER_AGENT_HEADER;
 
   private UserAgentSpanEnricher enricher;
 
@@ -101,6 +124,7 @@ public class UserAgentSpanEnricherTest extends AbstractAttributeEnricherTest {
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3)"
             + " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36";
 
+<<<<<<< HEAD
     Event e = createMockEvent();
     when(e.getHttp())
         .thenReturn(
@@ -111,6 +135,36 @@ public class UserAgentSpanEnricherTest extends AbstractAttributeEnricherTest {
                         .setUserAgent(userAgent)
                         .build())
                 .build());
+=======
+    Map<String, AttributeValue> attributeValueMap = e.getAttributes().getAttributeMap();
+    attributeValueMap.put(RPC_USER_AGENT_HEADER, AttributeValueCreator.create(header));
+
+    enricher.enrichEvent(null, e);
+
+    ReadableUserAgent expected = UADetectorServiceFactory.getResourceModuleParser().parse(header);
+
+    Map<String, AttributeValue> map = e.getEnrichedAttributes().getAttributeMap();
+    assertEquals(map.get(Constants.getEnrichedSpanConstant(
+        org.hypertrace.traceenricher.enrichedspan.constants.v1.UserAgent.USER_AGENT_NAME)).getValue(),
+        expected.getName());
+    assertEquals(map.get(Constants.getEnrichedSpanConstant(org.hypertrace.traceenricher.enrichedspan.constants.v1.UserAgent.USER_AGENT_TYPE)).getValue(),
+        expected.getType().getName());
+    assertEquals(map.get(Constants.getEnrichedSpanConstant(org.hypertrace.traceenricher.enrichedspan.constants.v1.UserAgent.USER_AGENT_DEVICE_CATEGORY)).getValue(),
+        expected.getDeviceCategory().getName());
+    assertEquals(map.get(Constants.getEnrichedSpanConstant(org.hypertrace.traceenricher.enrichedspan.constants.v1.UserAgent.USER_AGENT_OS_NAME)).getValue(),
+        expected.getOperatingSystem().getName());
+  }
+
+  @Test
+  public void enrichFromRpcUserAgent() {
+    Event e = createMockEvent();
+
+    String header = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_3)" +
+        " AppleWebKit/537.36 (KHTML, like Gecko) Chrome/73.0.3683.103 Safari/537.36";
+
+    Map<String, AttributeValue> attributeValueMap = e.getAttributes().getAttributeMap();
+    attributeValueMap.put(USER_AGENT_HEADER, AttributeValueCreator.create(header));
+>>>>>>> Use named fields for enriching grpc info
 
     enricher.enrichEvent(null, e);
 

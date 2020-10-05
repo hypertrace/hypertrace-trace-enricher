@@ -1,18 +1,9 @@
 package org.hypertrace.traceenricher.enrichment.enrichers;
 
-import static org.hypertrace.traceenricher.enrichment.enrichers.SpanTypeAttributeEnricher.CLIENT_KEY;
-import static org.hypertrace.traceenricher.enrichment.enrichers.SpanTypeAttributeEnricher.CLIENT_VALUE;
-import static org.hypertrace.traceenricher.enrichment.enrichers.SpanTypeAttributeEnricher.SERVER_VALUE;
-import static org.hypertrace.traceenricher.enrichment.enrichers.SpanTypeAttributeEnricher.SPAN_KIND_KEY;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
-
-import java.nio.ByteBuffer;
-import java.util.HashMap;
-import java.util.Map;
 import org.hypertrace.core.datamodel.AttributeValue;
 import org.hypertrace.core.datamodel.Attributes;
 import org.hypertrace.core.datamodel.Event;
+import org.hypertrace.core.datamodel.eventfields.rpc.Rpc;
 import org.hypertrace.core.datamodel.shared.trace.AttributeValueCreator;
 import org.hypertrace.core.span.constants.v1.Envoy;
 import org.hypertrace.core.span.constants.v1.Grpc;
@@ -24,6 +15,17 @@ import org.hypertrace.traceenricher.enrichedspan.constants.v1.Protocol;
 import org.hypertrace.traceenricher.util.Constants;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.nio.ByteBuffer;
+import java.util.HashMap;
+import java.util.Map;
+
+import static org.hypertrace.traceenricher.enrichment.enrichers.SpanTypeAttributeEnricher.CLIENT_KEY;
+import static org.hypertrace.traceenricher.enrichment.enrichers.SpanTypeAttributeEnricher.CLIENT_VALUE;
+import static org.hypertrace.traceenricher.enrichment.enrichers.SpanTypeAttributeEnricher.SERVER_VALUE;
+import static org.hypertrace.traceenricher.enrichment.enrichers.SpanTypeAttributeEnricher.SPAN_KIND_KEY;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class SpanTypeAttributeEnricherTest extends AbstractAttributeEnricherTest {
 
@@ -224,6 +226,18 @@ public class SpanTypeAttributeEnricherTest extends AbstractAttributeEnricherTest
     SpanTypeAttributeEnricher enricher = new SpanTypeAttributeEnricher();
     enricher.enrichEvent(null, e);
     Assertions.assertEquals(Protocol.PROTOCOL_GRPC, EnrichedSpanUtils.getProtocol(e));
+  }
+
+  @Test
+  public void test_getProtocolName_Otelgrpc_shouldReturnGrpc() {
+    Map<String, AttributeValue> map = new HashMap<>();
+    map.put(Constants.getRawSpanConstant(Http.HTTP_REQUEST_METHOD),
+        AttributeValue.newBuilder().setValue("GET").build());
+
+    Event e = createEvent(map, new HashMap<>());
+    e.setRpc(Rpc.newBuilder().setSystem("grpc").build());
+
+    Assertions.assertEquals(Protocol.PROTOCOL_GRPC, SpanTypeAttributeEnricher.getProtocolName(e));
   }
 
   @Test
