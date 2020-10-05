@@ -17,9 +17,6 @@ import java.util.Optional;
 
 public class UserAgentSpanEnricher extends AbstractTraceEnricher {
 
-  static final String USER_AGENT_HEADER = "user-agent";
-  static final String HTTP_REQUEST_HEADER_PREFIX = "http.request.header.";
-  static final String RPC_REQUEST_METADATA_PREFIX = "rpc.request.metadata.";
   private UserAgentStringParser userAgentStringParser =
       UADetectorServiceFactory.getResourceModuleParser();
 
@@ -71,6 +68,12 @@ public class UserAgentSpanEnricher extends AbstractTraceEnricher {
       // fallback to user agent on the request
       if (!StringUtils.isEmpty(event.getHttp().getRequest().getUserAgent())) {
         return Optional.of(event.getHttp().getRequest().getUserAgent());
+      }
+    }
+    if (event.getGrpc() != null && event.getGrpc().getRequest() != null) {
+      if (event.getGrpc().getRequest().getRequestMetadata() != null
+          && !StringUtils.isEmpty(event.getGrpc().getRequest().getRequestMetadata().getUserAgent())) {
+        return Optional.of(event.getGrpc().getRequest().getRequestMetadata().getUserAgent());
       }
     }
 
