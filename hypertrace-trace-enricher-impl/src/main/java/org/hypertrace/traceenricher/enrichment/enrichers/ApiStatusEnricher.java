@@ -29,27 +29,6 @@ import java.util.List;
  */
 public class ApiStatusEnricher extends AbstractTraceEnricher {
 
-  public static String getStatusCode(Event event, Protocol protocol) {
-    List<String> statusCodeKeys = Lists.newArrayList();
-    if (Protocol.PROTOCOL_GRPC == protocol) {
-      if (event.getGrpc() != null && event.getGrpc().getResponse() != null) {
-        int statusCode = event.getGrpc().getResponse().getStatusCode();
-        // Checking for the default value for status code field
-        if (statusCode != -1) {
-          return Integer.toString(statusCode);
-        }
-      }
-      statusCodeKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_STATUS_CODE));
-      statusCodeKeys.add(RawSpanConstants.getValue(Grpc.GRPC_STATUS_CODE));
-      statusCodeKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_CENSUS_STATUS_CODE));
-    } else if (Protocol.PROTOCOL_HTTP == protocol || Protocol.PROTOCOL_HTTPS == protocol) {
-      statusCodeKeys.add(RawSpanConstants.getValue(OTSpanTag.OT_SPAN_TAG_HTTP_STATUS_CODE));
-      statusCodeKeys.add(RawSpanConstants.getValue(Http.HTTP_RESPONSE_STATUS_CODE));
-    }
-
-    return SpanAttributeUtils.getFirstAvailableStringAttribute(event, statusCodeKeys);
-  }
-
   @Override
   public void enrichEvent(StructuredTrace trace, Event event) {
     Protocol protocol = EnrichedSpanUtils.getProtocol(event);
@@ -92,5 +71,26 @@ public class ApiStatusEnricher extends AbstractTraceEnricher {
     addEnrichedAttributeIfNotNull(event, EnrichedSpanConstants.getValue(Api.API_STATUS_CODE), statusCode);
     addEnrichedAttributeIfNotNull(event, EnrichedSpanConstants.getValue(Api.API_STATUS_MESSAGE), statusMessage);
     addEnrichedAttributeIfNotNull(event, EnrichedSpanConstants.getValue(Api.API_STATUS), status);
+  }
+
+  public static String getStatusCode(Event event, Protocol protocol) {
+    List<String> statusCodeKeys = Lists.newArrayList();
+    if (Protocol.PROTOCOL_GRPC == protocol) {
+      if (event.getGrpc() != null && event.getGrpc().getResponse() != null) {
+        int statusCode = event.getGrpc().getResponse().getStatusCode();
+        // Checking for the default value for status code field
+        if (statusCode != -1) {
+          return Integer.toString(statusCode);
+        }
+      }
+      statusCodeKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_STATUS_CODE));
+      statusCodeKeys.add(RawSpanConstants.getValue(Grpc.GRPC_STATUS_CODE));
+      statusCodeKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_CENSUS_STATUS_CODE));
+    } else if (Protocol.PROTOCOL_HTTP == protocol || Protocol.PROTOCOL_HTTPS == protocol) {
+      statusCodeKeys.add(RawSpanConstants.getValue(OTSpanTag.OT_SPAN_TAG_HTTP_STATUS_CODE));
+      statusCodeKeys.add(RawSpanConstants.getValue(Http.HTTP_RESPONSE_STATUS_CODE));
+    }
+
+    return SpanAttributeUtils.getFirstAvailableStringAttribute(event, statusCodeKeys);
   }
 }
