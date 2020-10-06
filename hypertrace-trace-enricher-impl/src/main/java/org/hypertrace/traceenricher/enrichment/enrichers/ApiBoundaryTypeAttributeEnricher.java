@@ -6,6 +6,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.hypertrace.core.datamodel.AttributeValue;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.StructuredTrace;
+import org.hypertrace.core.datamodel.eventfields.grpc.Request;
+import org.hypertrace.core.datamodel.eventfields.grpc.RequestMetadata;
 import org.hypertrace.core.datamodel.shared.SpanAttributeUtils;
 import org.hypertrace.core.datamodel.shared.StructuredTraceGraph;
 import org.hypertrace.core.datamodel.shared.trace.AttributeValueCreator;
@@ -22,6 +24,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * This is to determine if the span is the entry / exit point for a particular API.
@@ -119,22 +122,32 @@ public class ApiBoundaryTypeAttributeEnricher extends AbstractTraceEnricher {
   private void enrichHostHeader(Event event) {
     Protocol protocol = EnrichedSpanUtils.getProtocol(event);
     if (protocol == Protocol.PROTOCOL_GRPC) {
-      if (event.getGrpc() != null && event.getGrpc().getRequest() != null && event.getGrpc().getRequest().getRequestMetadata() != null) {
-        String value = event.getGrpc().getRequest().getRequestMetadata().getAuthority();
-        if (sanitizeAndEnrichHostHeader(event, value)) {
-          return;
-        }
+      Optional<String> value = getGrpcAuthority(event);
+      if (value.isPresent() && isHostHeaderEnrichmentSuccessful(event, value.get())) {
+        return;
       }
     }
     for (String key : HOST_HEADER_ATTRIBUTES) {
       String value = SpanAttributeUtils.getStringAttribute(event, key);
-      if (sanitizeAndEnrichHostHeader(event, value)) {
+      if (isHostHeaderEnrichmentSuccessful(event, value)) {
         break;
       }
     }
   }
 
-  private boolean sanitizeAndEnrichHostHeader(Event event, String value) {
+  private Optional<String> getGrpcAuthority(Event event) {
+    String authority = null;
+    if (event.getGrpc() != null && event.getGrpc().getRequest() != null) {
+      Request request = event.getGrpc().getRequest();
+      RequestMetadata requestMetadata = request.getRequestMetadata();
+      if (requestMetadata != null) {
+        authority = requestMetadata.getAuthority();
+      }
+    }
+    return Optional.ofNullable(authority);
+  }
+
+  private boolean isHostHeaderEnrichmentSuccessful(Event event, String value) {
     if (StringUtils.isNotBlank(value)) {
       String host = sanitizeHostValue(value);
       if (!LOCALHOST.equalsIgnoreCase(host)) {

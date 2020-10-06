@@ -93,11 +93,11 @@ public class ApiStatusEnricherTest extends AbstractAttributeEnricherTest {
     when(e.getGrpc()).thenReturn(grpc);
     Response response = mock(Response.class);
     when(grpc.getResponse()).thenReturn(response);
-    when(response.getStatusCode()).thenReturn(1);
+    when(response.getStatusCode()).thenReturn(5);
     mockProtocol(e, Protocol.PROTOCOL_GRPC);
     target.enrichEvent(null, e);
     assertEquals("5", getStatusCode(e));
-    assertEquals("CANCELLED", getStatusMessage(e));
+    assertEquals("NOT_FOUND", getStatusMessage(e));
     assertEquals("FAIL", getStatus(e));
   }
 

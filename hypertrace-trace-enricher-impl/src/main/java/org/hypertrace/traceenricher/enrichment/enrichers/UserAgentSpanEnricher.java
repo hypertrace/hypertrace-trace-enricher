@@ -7,6 +7,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.hypertrace.core.datamodel.AttributeValue;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.StructuredTrace;
+import org.hypertrace.core.datamodel.eventfields.grpc.Request;
 import org.hypertrace.core.datamodel.shared.trace.AttributeValueCreator;
 import org.hypertrace.traceenricher.enrichedspan.constants.EnrichedSpanConstants;
 import org.hypertrace.traceenricher.enrichedspan.constants.v1.UserAgent;
@@ -71,9 +72,10 @@ public class UserAgentSpanEnricher extends AbstractTraceEnricher {
       }
     }
     if (event.getGrpc() != null && event.getGrpc().getRequest() != null) {
-      if (event.getGrpc().getRequest().getRequestMetadata() != null
-          && !StringUtils.isEmpty(event.getGrpc().getRequest().getRequestMetadata().getUserAgent())) {
-        return Optional.of(event.getGrpc().getRequest().getRequestMetadata().getUserAgent());
+      Request request = event.getGrpc().getRequest();
+      if (request.getRequestMetadata() != null
+          && !StringUtils.isEmpty(request.getRequestMetadata().getUserAgent())) {
+        return Optional.of(request.getRequestMetadata().getUserAgent());
       }
     }
 

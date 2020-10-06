@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import org.apache.commons.lang3.StringUtils;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.StructuredTrace;
+import org.hypertrace.core.datamodel.eventfields.grpc.Response;
 import org.hypertrace.core.datamodel.shared.SpanAttributeUtils;
 import org.hypertrace.core.span.constants.RawSpanConstants;
 import org.hypertrace.core.span.constants.v1.CensusResponse;
@@ -38,42 +39,18 @@ public class ApiStatusEnricher extends AbstractTraceEnricher {
     String status = null;
     if (Protocol.PROTOCOL_GRPC == protocol) {
       status = GrpcCodeMapper.getState(statusCode);
-
-      if (event.getGrpc() != null && event.getGrpc().getResponse() != null) {
-        if (StringUtils.isNotBlank(event.getGrpc().getResponse().getStatusMessage())) {
-          statusMessage = event.getGrpc().getResponse().getStatusMessage();
-        } else if (StringUtils.isNotBlank(event.getGrpc().getResponse().getErrorMessage())) {
-          statusMessage = event.getGrpc().getResponse().getErrorMessage();
-        }
-      } else {
-        List<String> statusMessageKeys = Lists.newArrayList();
-        statusMessageKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_STATUS_MESSAGE));
-        statusMessageKeys.add(RawSpanConstants.getValue(Envoy.ENVOY_GRPC_STATUS_MESSAGE));
-        statusMessage = SpanAttributeUtils.getFirstAvailableStringAttribute(event, statusMessageKeys);
-      }
-
-      // if application tracer doesn't send the status message, then, we'll use
-      // our default mapping
-      if (statusMessage == null) {
-        statusMessage = GrpcCodeMapper.getMessage(statusCode);
-      }
+      statusMessage = getGrpcStatusMessage(event, statusCode);
     } else if (Protocol.PROTOCOL_HTTP == protocol || Protocol.PROTOCOL_HTTPS == protocol) {
       status = HttpCodeMapper.getState(statusCode);
 
-      statusMessage = SpanAttributeUtils.getStringAttribute(
-          event,
-          RawSpanConstants.getValue(Http.HTTP_RESPONSE_STATUS_MESSAGE));
-      if (statusMessage == null) {
-        statusMessage = HttpCodeMapper.getMessage(statusCode);
-      }
-
+      statusMessage = getHttpStatusMessage(event, statusCode);
     }
     addEnrichedAttributeIfNotNull(event, EnrichedSpanConstants.getValue(Api.API_STATUS_CODE), statusCode);
     addEnrichedAttributeIfNotNull(event, EnrichedSpanConstants.getValue(Api.API_STATUS_MESSAGE), statusMessage);
     addEnrichedAttributeIfNotNull(event, EnrichedSpanConstants.getValue(Api.API_STATUS), status);
   }
 
-  public static String getStatusCode(Event event, Protocol protocol) {
+  private static String getStatusCode(Event event, Protocol protocol) {
     List<String> statusCodeKeys = Lists.newArrayList();
     if (Protocol.PROTOCOL_GRPC == protocol) {
       if (event.getGrpc() != null && event.getGrpc().getResponse() != null) {
@@ -92,5 +69,39 @@ public class ApiStatusEnricher extends AbstractTraceEnricher {
     }
 
     return SpanAttributeUtils.getFirstAvailableStringAttribute(event, statusCodeKeys);
+  }
+
+  private static String getGrpcStatusMessage(Event event, String statusCode) {
+    String statusMessage = null;
+    if (event.getGrpc() != null && event.getGrpc().getResponse() != null) {
+      Response response = event.getGrpc().getResponse();
+      if (StringUtils.isNotBlank(response.getStatusMessage())) {
+        statusMessage = response.getStatusMessage();
+      } else if (StringUtils.isNotBlank(response.getErrorMessage())) {
+        statusMessage = response.getErrorMessage();
+      }
+    } else {
+      List<String> statusMessageKeys = Lists.newArrayList();
+      statusMessageKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_STATUS_MESSAGE));
+      statusMessageKeys.add(RawSpanConstants.getValue(Envoy.ENVOY_GRPC_STATUS_MESSAGE));
+      statusMessage = SpanAttributeUtils.getFirstAvailableStringAttribute(event, statusMessageKeys);
+    }
+
+    // if application tracer doesn't send the status message, then, we'll use
+    // our default mapping
+    if (statusMessage == null) {
+      statusMessage = GrpcCodeMapper.getMessage(statusCode);
+    }
+    return statusMessage;
+  }
+
+  private static String getHttpStatusMessage(Event event, String statusCode) {
+    String statusMessage = SpanAttributeUtils.getStringAttribute(
+        event,
+        RawSpanConstants.getValue(Http.HTTP_RESPONSE_STATUS_MESSAGE));
+    if (statusMessage == null) {
+      statusMessage = HttpCodeMapper.getMessage(statusCode);
+    }
+    return statusMessage;
   }
 }
