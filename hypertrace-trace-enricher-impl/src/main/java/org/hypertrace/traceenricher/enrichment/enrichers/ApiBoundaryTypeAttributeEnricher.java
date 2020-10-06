@@ -123,14 +123,20 @@ public class ApiBoundaryTypeAttributeEnricher extends AbstractTraceEnricher {
     Protocol protocol = EnrichedSpanUtils.getProtocol(event);
     if (protocol == Protocol.PROTOCOL_GRPC) {
       Optional<String> value = getGrpcAuthority(event);
-      if (value.isPresent() && isHostHeaderEnrichmentSuccessful(event, value.get())) {
-        return;
+      if (value.isPresent()) {
+        Optional<String> host = getSanitizedHostValue(value.get());
+        if (host.isPresent()) {
+          addEnrichedAttribute(event, HOST_HEADER, AttributeValueCreator.create(host.get()));
+          return;
+        }
       }
     }
     for (String key : HOST_HEADER_ATTRIBUTES) {
       String value = SpanAttributeUtils.getStringAttribute(event, key);
-      if (isHostHeaderEnrichmentSuccessful(event, value)) {
-        break;
+      Optional<String> host = getSanitizedHostValue(value);
+      if (host.isPresent()) {
+        addEnrichedAttribute(event, HOST_HEADER, AttributeValueCreator.create(host.get()));
+        return;
       }
     }
   }
@@ -147,15 +153,14 @@ public class ApiBoundaryTypeAttributeEnricher extends AbstractTraceEnricher {
     return Optional.ofNullable(authority);
   }
 
-  private boolean isHostHeaderEnrichmentSuccessful(Event event, String value) {
+  private Optional<String> getSanitizedHostValue(String value) {
     if (StringUtils.isNotBlank(value)) {
       String host = sanitizeHostValue(value);
       if (!LOCALHOST.equalsIgnoreCase(host)) {
-        addEnrichedAttribute(event, HOST_HEADER, AttributeValueCreator.create(host));
-        return true;
+        return Optional.of(host);
       }
     }
-    return false;
+    return Optional.empty();
   }
 
   private String sanitizeHostValue(String host) {
