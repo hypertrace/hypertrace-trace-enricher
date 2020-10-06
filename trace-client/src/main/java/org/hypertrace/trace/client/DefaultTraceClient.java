@@ -1,6 +1,5 @@
 package org.hypertrace.trace.client;
 
-import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
 import org.hypertrace.core.attribute.service.cachingclient.CachingAttributeClient;
 import org.hypertrace.core.attribute.service.projection.AttributeProjectionRegistry;
@@ -32,21 +31,20 @@ class DefaultTraceClient implements TraceClient {
   }
 
   @Override
-  public Maybe<LiteralValue> getSpanValue(Event span, String attributeKey) {
-    return this.getAttribute(AttributeScope.EVENT, attributeKey)
-        .flatMapMaybe(
-            definition -> this.valueResolver.resolve(ValueSource.forSpan(span), definition));
+  public Single<LiteralValue> getSpanValue(
+      StructuredTrace trace, Event span, String attributeScope, String attributeKey) {
+    return this.getAttribute(attributeScope, attributeKey)
+        .flatMap(
+            definition -> this.valueResolver.resolve(ValueSource.forSpan(trace, span), definition));
   }
 
   @Override
-  public Maybe<LiteralValue> getTraceValue(StructuredTrace trace, String attributeKey) {
-    return this.getAttribute(AttributeScope.TRACE, attributeKey)
-        .flatMapMaybe(
-            definition -> this.valueResolver.resolve(ValueSource.forTrace(trace), definition));
+  public Single<LiteralValue> getTraceValue(StructuredTrace trace, String attributeKey) {
+    return this.getAttribute(AttributeScope.TRACE.name(), attributeKey)
+        .flatMap(definition -> this.valueResolver.resolve(ValueSource.forTrace(trace), definition));
   }
 
-  private Single<AttributeMetadata> getAttribute(
-      AttributeScope attributeScope, String attributeKey) {
-    return this.attributeClient.get(attributeScope.name(), attributeKey);
+  private Single<AttributeMetadata> getAttribute(String attributeScope, String attributeKey) {
+    return this.attributeClient.get(attributeScope, attributeKey);
   }
 }
