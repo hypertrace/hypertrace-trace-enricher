@@ -1,16 +1,17 @@
 package org.hypertrace.trace.client;
 
+import static io.reactivex.rxjava3.core.Single.zip;
+
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Observable;
+import io.reactivex.rxjava3.core.Single;
 import java.util.List;
-import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
 import org.hypertrace.core.attribute.service.cachingclient.CachingAttributeClient;
 import org.hypertrace.core.attribute.service.projection.AttributeProjection;
 import org.hypertrace.core.attribute.service.projection.AttributeProjectionRegistry;
 import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
-import org.hypertrace.core.attribute.service.v1.AttributeScope;
 import org.hypertrace.core.attribute.service.v1.AttributeType;
 import org.hypertrace.core.attribute.service.v1.LiteralValue;
 import org.hypertrace.core.attribute.service.v1.Projection;
@@ -18,111 +19,106 @@ import org.hypertrace.core.attribute.service.v1.ProjectionExpression;
 
 class DefaultValueResolver implements ValueResolver {
   private final CachingAttributeClient attributeClient;
-  private final ValueCoercer valueCoercer;
   private final AttributeProjectionRegistry attributeProjectionRegistry;
 
   DefaultValueResolver(
       CachingAttributeClient attributeClient,
-      ValueCoercer valueCoercer,
       AttributeProjectionRegistry attributeProjectionRegistry) {
     this.attributeClient = attributeClient;
-    this.valueCoercer = valueCoercer;
     this.attributeProjectionRegistry = attributeProjectionRegistry;
   }
 
   @Override
-  public Maybe<LiteralValue> resolve(ValueSource valueSource, AttributeMetadata attributeMetadata) {
+  public Single<LiteralValue> resolve(
+      ValueSource valueSource, AttributeMetadata attributeMetadata) {
     if (!attributeMetadata.hasDefinition()) {
-      return Maybe.error(new NoSuchElementException("Attribute definition not set"));
+      return this.buildError("Attribute definition not set");
     }
 
     switch (attributeMetadata.getDefinition().getValueCase()) {
-      case SPAN_PATH:
+      case SOURCE_PATH:
         return this.resolveValue(
             valueSource,
+            attributeMetadata.getScope().name(),
             attributeMetadata.getType(),
             attributeMetadata.getValueKind(),
-            attributeMetadata.getDefinition().getSpanPath());
+            attributeMetadata.getDefinition().getSourcePath());
       case PROJECTION:
         return this.resolveProjection(
-            valueSource,
-            attributeMetadata.getDefinition().getProjection(),
-            attributeMetadata.getScope());
+            valueSource, attributeMetadata.getDefinition().getProjection());
       case VALUE_NOT_SET:
       default:
-        return Maybe.error(new NoSuchElementException("Unrecognized attribute definition"));
+        return this.buildError("Unrecognized attribute definition");
     }
   }
 
-  private Maybe<LiteralValue> resolveValue(
-      ValueSource valueSource,
+  private Single<LiteralValue> resolveValue(
+      ValueSource contextValueSource,
+      String attributeScope,
       AttributeType attributeType,
       AttributeKind attributeKind,
       String path) {
+    Single<ValueSource> matchingValueSource =
+        Maybe.fromOptional(contextValueSource.sourceForScope(attributeScope))
+            .switchIfEmpty(
+                this.buildError("No value source available supporting scope %s", attributeScope));
     switch (attributeType) {
       case ATTRIBUTE:
-        return Maybe.fromOptional(valueSource.getAttribute(path, attributeKind));
+        return matchingValueSource
+            .mapOptional(valueSource -> valueSource.getAttribute(path, attributeKind))
+            .switchIfEmpty(
+                this.buildError(
+                    "Unable to extract attribute path %s with type %s", path, attributeKind));
       case METRIC:
-        return Maybe.fromOptional(valueSource.getMetric(path, attributeKind));
+        return matchingValueSource
+            .mapOptional(valueSource -> valueSource.getMetric(path, attributeKind))
+            .switchIfEmpty(
+                this.buildError(
+                    "Unable to extract metric path %s with type %s", path, attributeKind));
       case UNRECOGNIZED:
       case TYPE_UNDEFINED:
       default:
-        return Maybe.error(new NoSuchElementException("Unrecognized projection type"));
+        return this.buildError("Unrecognized projection type");
     }
   }
 
-  private Maybe<LiteralValue> resolveProjection(
-      ValueSource valueSource, Projection projection, AttributeScope scope) {
+  private Single<LiteralValue> resolveProjection(ValueSource valueSource, Projection projection) {
     switch (projection.getValueCase()) {
-      case ATTRIBUTE_KEY:
+      case ATTRIBUTE_ID:
         return this.attributeClient
-            .get(scope.name(), projection.getAttributeKey())
-            .flatMapMaybe(projectedAttribute -> this.resolve(valueSource, projectedAttribute));
+            .get(projection.getAttributeId())
+            .flatMap(attributeMetadata -> this.resolve(valueSource, attributeMetadata));
       case LITERAL:
-        return Maybe.just(projection.getLiteral());
+        return Single.just(projection.getLiteral());
       case EXPRESSION:
-        return this.resolveExpression(valueSource, projection.getExpression(), scope);
+        return this.resolveExpression(valueSource, projection.getExpression());
       case VALUE_NOT_SET:
       default:
-        return Maybe.error(new NoSuchElementException("Unrecognized projection type"));
+        return this.buildError("Unrecognized projection type");
     }
   }
 
-  private Maybe<LiteralValue> resolveExpression(
-      ValueSource valueSource, ProjectionExpression expression, AttributeScope scope) {
-    return Maybe.fromOptional(
-            this.attributeProjectionRegistry.getProjection(expression.getOperator()))
-        .flatMap(
-            projectionFunction ->
-                this.resolveArgumentList(
-                        valueSource, projectionFunction, expression.getArgumentsList(), scope)
-                    .map(projectionFunction::project))
-        .mapOptional(this.valueCoercer::toLiteral);
+  private Single<LiteralValue> resolveExpression(
+      ValueSource valueSource, ProjectionExpression expression) {
+
+    Single<AttributeProjection> projectionSingle =
+        Maybe.fromOptional(this.attributeProjectionRegistry.getProjection(expression.getOperator()))
+            .switchIfEmpty(
+                buildError("Unregistered projection operator: %s", expression.getOperator()));
+    Single<List<LiteralValue>> argumentsSingle =
+        this.resolveArgumentList(valueSource, expression.getArgumentsList());
+
+    return zip(projectionSingle, argumentsSingle, AttributeProjection::project);
   }
 
-  private Maybe<List<Object>> resolveArgumentList(
-      ValueSource valueSource,
-      AttributeProjection projectionFunction,
-      List<Projection> arguments,
-      AttributeScope attributeScope) {
-    return Observable.range(0, arguments.size())
-        .flatMapMaybe(
-            index ->
-                this.resolveArgument(
-                    valueSource,
-                    arguments.get(index),
-                    projectionFunction.getArgumentKindAtIndex(index),
-                    attributeScope))
-        .collect(Collectors.toList())
-        .toMaybe();
+  private Single<List<LiteralValue>> resolveArgumentList(
+      ValueSource valueSource, List<Projection> arguments) {
+    return Observable.fromIterable(arguments)
+        .flatMapSingle(argument -> this.resolveProjection(valueSource, argument))
+        .collect(Collectors.toList());
   }
 
-  private Maybe<Object> resolveArgument(
-      ValueSource valueSource,
-      Projection projection,
-      AttributeKind attributeKind,
-      AttributeScope attributeScope) {
-    return this.resolveProjection(valueSource, projection, attributeScope)
-        .mapOptional(x -> this.valueCoercer.fromLiteral(x, attributeKind));
+  private <T> Single<T> buildError(String message, Object... args) {
+    return Single.error(new UnsupportedOperationException(String.format(message, args)));
   }
 }

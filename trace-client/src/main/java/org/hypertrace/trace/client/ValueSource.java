@@ -11,8 +11,10 @@ public interface ValueSource {
 
   Optional<LiteralValue> getMetric(String key, AttributeKind attributeKind);
 
-  static ValueSource forSpan(Event span) {
-    return new SpanValueSource(span, DefaultValueCoercer.INSTANCE);
+  Optional<ValueSource> sourceForScope(String scope);
+
+  static ValueSource forSpan(StructuredTrace trace, Event span) {
+    return new SpanValueSource(trace, span, DefaultValueCoercer.INSTANCE);
   }
 
   static ValueSource forTrace(StructuredTrace trace) {
