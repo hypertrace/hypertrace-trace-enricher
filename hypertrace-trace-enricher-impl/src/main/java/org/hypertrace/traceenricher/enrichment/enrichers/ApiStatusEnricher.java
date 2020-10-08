@@ -20,6 +20,7 @@ import org.hypertrace.traceenricher.enrichment.AbstractTraceEnricher;
 import org.hypertrace.traceenricher.util.GrpcCodeMapper;
 import org.hypertrace.traceenricher.util.HttpCodeMapper;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -29,6 +30,10 @@ import java.util.List;
  * fina it based on code status
  */
 public class ApiStatusEnricher extends AbstractTraceEnricher {
+  private static final List<String> grpcStatusCodeKeys = initializeGrpcStatusCodeKeys();
+  private static final List<String> httpStatusCodeKeys = initializeHttpStatusCodeKeys();
+  private static final List<String> grpcStatusMessageKeys = initializeGrpcStatusMessageKeys();
+  private static final String HTTP_RESPONSE_STATUS_MESSAGE_ATTR = RawSpanConstants.getValue(Http.HTTP_RESPONSE_STATUS_MESSAGE);
 
   @Override
   public void enrichEvent(StructuredTrace trace, Event event) {
@@ -60,12 +65,9 @@ public class ApiStatusEnricher extends AbstractTraceEnricher {
           return Integer.toString(statusCode);
         }
       }
-      statusCodeKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_STATUS_CODE));
-      statusCodeKeys.add(RawSpanConstants.getValue(Grpc.GRPC_STATUS_CODE));
-      statusCodeKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_CENSUS_STATUS_CODE));
+      statusCodeKeys.addAll(grpcStatusCodeKeys);
     } else if (Protocol.PROTOCOL_HTTP == protocol || Protocol.PROTOCOL_HTTPS == protocol) {
-      statusCodeKeys.add(RawSpanConstants.getValue(OTSpanTag.OT_SPAN_TAG_HTTP_STATUS_CODE));
-      statusCodeKeys.add(RawSpanConstants.getValue(Http.HTTP_RESPONSE_STATUS_CODE));
+      statusCodeKeys.addAll(httpStatusCodeKeys);
     }
 
     return SpanAttributeUtils.getFirstAvailableStringAttribute(event, statusCodeKeys);
@@ -81,10 +83,7 @@ public class ApiStatusEnricher extends AbstractTraceEnricher {
         statusMessage = response.getErrorMessage();
       }
     } else {
-      List<String> statusMessageKeys = Lists.newArrayList();
-      statusMessageKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_STATUS_MESSAGE));
-      statusMessageKeys.add(RawSpanConstants.getValue(Envoy.ENVOY_GRPC_STATUS_MESSAGE));
-      statusMessage = SpanAttributeUtils.getFirstAvailableStringAttribute(event, statusMessageKeys);
+      statusMessage = SpanAttributeUtils.getFirstAvailableStringAttribute(event, grpcStatusMessageKeys);
     }
 
     // if application tracer doesn't send the status message, then, we'll use
@@ -98,10 +97,32 @@ public class ApiStatusEnricher extends AbstractTraceEnricher {
   private static String getHttpStatusMessage(Event event, String statusCode) {
     String statusMessage = SpanAttributeUtils.getStringAttribute(
         event,
-        RawSpanConstants.getValue(Http.HTTP_RESPONSE_STATUS_MESSAGE));
+        HTTP_RESPONSE_STATUS_MESSAGE_ATTR);
     if (statusMessage == null) {
       statusMessage = HttpCodeMapper.getMessage(statusCode);
     }
     return statusMessage;
+  }
+
+  private static List<String> initializeGrpcStatusCodeKeys() {
+    List<String> grpcStatusCodeKeys = new ArrayList<>();
+    grpcStatusCodeKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_STATUS_CODE));
+    grpcStatusCodeKeys.add(RawSpanConstants.getValue(Grpc.GRPC_STATUS_CODE));
+    grpcStatusCodeKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_CENSUS_STATUS_CODE));
+    return grpcStatusCodeKeys;
+  }
+
+  private static List<String> initializeHttpStatusCodeKeys() {
+    List<String> httpStatusCodeKeys = new ArrayList<>();
+    httpStatusCodeKeys.add(RawSpanConstants.getValue(OTSpanTag.OT_SPAN_TAG_HTTP_STATUS_CODE));
+    httpStatusCodeKeys.add(RawSpanConstants.getValue(Http.HTTP_RESPONSE_STATUS_CODE));
+    return httpStatusCodeKeys;
+  }
+
+  private static List<String> initializeGrpcStatusMessageKeys() {
+    List<String> grpcStatusMessageKeys = new ArrayList<>();
+    grpcStatusMessageKeys.add(RawSpanConstants.getValue(CensusResponse.CENSUS_RESPONSE_STATUS_MESSAGE));
+    grpcStatusMessageKeys.add(RawSpanConstants.getValue(Envoy.ENVOY_GRPC_STATUS_MESSAGE));
+    return grpcStatusMessageKeys;
   }
 }

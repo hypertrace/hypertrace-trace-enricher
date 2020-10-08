@@ -162,18 +162,18 @@ public class SpanTypeAttributeEnricher extends AbstractTraceEnricher {
   public static Protocol getGrpcProtocol(Event event) {
     Map<String, AttributeValue> attributeMap = event.getAttributes().getAttributeMap();
 
+    if (event.getRpc() != null && event.getRpc().getSystem() != null) {
+      String rpcSystem = event.getRpc().getSystem();
+      if (GRPC_PROTOCOL_VALUE.equalsIgnoreCase(rpcSystem)) {
+        return Protocol.PROTOCOL_GRPC;
+      }
+    }
+
     // check Open Tracing grpc component value first
     AttributeValue componentAttrValue = attributeMap.get(
         RawSpanConstants.getValue(OTSpanTag.OT_SPAN_TAG_COMPONENT));
     if (componentAttrValue != null) {
       if (GRPC_PROTOCOL_VALUE.equalsIgnoreCase(componentAttrValue.getValue())) {
-        return Protocol.PROTOCOL_GRPC;
-      }
-    }
-
-    if (event.getRpc() != null && event.getRpc().getSystem() != null) {
-      String rpcSystem = event.getRpc().getSystem();
-      if (GRPC_PROTOCOL_VALUE.equalsIgnoreCase(rpcSystem)) {
         return Protocol.PROTOCOL_GRPC;
       }
     }

@@ -122,13 +122,10 @@ public class ApiBoundaryTypeAttributeEnricher extends AbstractTraceEnricher {
   private void enrichHostHeader(Event event) {
     Protocol protocol = EnrichedSpanUtils.getProtocol(event);
     if (protocol == Protocol.PROTOCOL_GRPC) {
-      Optional<String> value = getGrpcAuthority(event);
-      if (value.isPresent()) {
-        Optional<String> host = getSanitizedHostValue(value.get());
-        if (host.isPresent()) {
-          addEnrichedAttribute(event, HOST_HEADER, AttributeValueCreator.create(host.get()));
-          return;
-        }
+      Optional<String> host = getGrpcAuthority(event);
+      if (host.isPresent()) {
+        addEnrichedAttribute(event, HOST_HEADER, AttributeValueCreator.create(host.get()));
+        return;
       }
     }
     for (String key : HOST_HEADER_ATTRIBUTES) {
@@ -142,15 +139,14 @@ public class ApiBoundaryTypeAttributeEnricher extends AbstractTraceEnricher {
   }
 
   private Optional<String> getGrpcAuthority(Event event) {
-    String authority = null;
     if (event.getGrpc() != null && event.getGrpc().getRequest() != null) {
       Request request = event.getGrpc().getRequest();
       RequestMetadata requestMetadata = request.getRequestMetadata();
       if (requestMetadata != null) {
-        authority = requestMetadata.getAuthority();
+        return getSanitizedHostValue(requestMetadata.getAuthority());
       }
     }
-    return Optional.ofNullable(authority);
+    return Optional.empty();
   }
 
   private Optional<String> getSanitizedHostValue(String value) {

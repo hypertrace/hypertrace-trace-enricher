@@ -10,6 +10,8 @@ import org.hypertrace.core.datamodel.StructuredTrace;
 import org.hypertrace.core.datamodel.eventfields.grpc.Request;
 import org.hypertrace.core.datamodel.shared.trace.AttributeValueCreator;
 import org.hypertrace.traceenricher.enrichedspan.constants.EnrichedSpanConstants;
+import org.hypertrace.traceenricher.enrichedspan.constants.utils.EnrichedSpanUtils;
+import org.hypertrace.traceenricher.enrichedspan.constants.v1.Protocol;
 import org.hypertrace.traceenricher.enrichedspan.constants.v1.UserAgent;
 import org.hypertrace.traceenricher.enrichment.AbstractTraceEnricher;
 
@@ -59,23 +61,27 @@ public class UserAgentSpanEnricher extends AbstractTraceEnricher {
   }
 
   private Optional<String> getUserAgent(Event event) {
-    if (event.getHttp() != null && event.getHttp().getRequest() != null) {
-      // prefer user agent from headers
-      if (event.getHttp().getRequest().getHeaders() != null
-          && !StringUtils.isEmpty(event.getHttp().getRequest().getHeaders().getUserAgent())) {
-        return Optional.of(event.getHttp().getRequest().getHeaders().getUserAgent());
-      }
+    Protocol protocol = EnrichedSpanUtils.getProtocol(event);
+    if (Protocol.PROTOCOL_HTTP == protocol || Protocol.PROTOCOL_HTTPS == protocol) {
+      if (event.getHttp() != null && event.getHttp().getRequest() != null) {
+        // prefer user agent from headers
+        if (event.getHttp().getRequest().getHeaders() != null
+            && !StringUtils.isEmpty(event.getHttp().getRequest().getHeaders().getUserAgent())) {
+          return Optional.of(event.getHttp().getRequest().getHeaders().getUserAgent());
+        }
 
-      // fallback to user agent on the request
-      if (!StringUtils.isEmpty(event.getHttp().getRequest().getUserAgent())) {
-        return Optional.of(event.getHttp().getRequest().getUserAgent());
+        // fallback to user agent on the request
+        if (!StringUtils.isEmpty(event.getHttp().getRequest().getUserAgent())) {
+          return Optional.of(event.getHttp().getRequest().getUserAgent());
+        }
       }
-    }
-    if (event.getGrpc() != null && event.getGrpc().getRequest() != null) {
-      Request request = event.getGrpc().getRequest();
-      if (request.getRequestMetadata() != null
-          && !StringUtils.isEmpty(request.getRequestMetadata().getUserAgent())) {
-        return Optional.of(request.getRequestMetadata().getUserAgent());
+    } else if (Protocol.PROTOCOL_GRPC == protocol) {
+      if (event.getGrpc() != null && event.getGrpc().getRequest() != null) {
+        Request request = event.getGrpc().getRequest();
+        if (request.getRequestMetadata() != null
+            && !StringUtils.isEmpty(request.getRequestMetadata().getUserAgent())) {
+          return Optional.of(request.getRequestMetadata().getUserAgent());
+        }
       }
     }
 
