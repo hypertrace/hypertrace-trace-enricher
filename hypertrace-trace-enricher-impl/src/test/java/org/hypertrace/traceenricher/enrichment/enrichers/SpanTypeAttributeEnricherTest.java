@@ -3,6 +3,7 @@ package org.hypertrace.traceenricher.enrichment.enrichers;
 import org.hypertrace.core.datamodel.AttributeValue;
 import org.hypertrace.core.datamodel.Attributes;
 import org.hypertrace.core.datamodel.Event;
+import org.hypertrace.core.datamodel.eventfields.http.Request;
 import org.hypertrace.core.datamodel.eventfields.rpc.Rpc;
 import org.hypertrace.core.datamodel.shared.trace.AttributeValueCreator;
 import org.hypertrace.core.span.constants.v1.Envoy;
@@ -260,6 +261,22 @@ public class SpanTypeAttributeEnricherTest extends AbstractAttributeEnricherTest
     map.put(Constants.getRawSpanConstant(Http.HTTP_REQUEST_URL),
         AttributeValue.newBuilder().setValue("http://hypertrace.org").build());
     Event e = createEvent(map, new HashMap<>());
+
+    Assertions.assertEquals(Protocol.PROTOCOL_HTTP, SpanTypeAttributeEnricher.getProtocolName(e));
+  }
+
+  @Test
+  public void test_getProtocolName_HttpFromFullUrl_shouldReturnHttp() {
+    Map<String, AttributeValue> map = new HashMap<>();
+
+    map.put(Constants.getRawSpanConstant(Http.HTTP_METHOD),
+        AttributeValue.newBuilder().setValue("GET").build());
+    Event e = createEvent(map, new HashMap<>());
+    e.setHttp(org.hypertrace.core.datamodel.eventfields.http.Http.newBuilder()
+        .setRequest(
+            Request.newBuilder().setUrl("http://hypertrace.org").build()
+        ).build()
+    );
 
     Assertions.assertEquals(Protocol.PROTOCOL_HTTP, SpanTypeAttributeEnricher.getProtocolName(e));
   }
