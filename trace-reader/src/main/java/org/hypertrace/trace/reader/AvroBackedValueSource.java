@@ -1,4 +1,4 @@
-package org.hypertrace.trace.client;
+package org.hypertrace.trace.reader;
 
 import java.util.Optional;
 import javax.annotation.Nullable;

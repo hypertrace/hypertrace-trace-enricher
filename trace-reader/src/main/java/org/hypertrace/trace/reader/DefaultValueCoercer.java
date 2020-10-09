@@ -1,4 +1,4 @@
-package org.hypertrace.trace.client;
+package org.hypertrace.trace.reader;
 
 import static java.util.Objects.requireNonNull;
 
