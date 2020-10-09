@@ -1,10 +1,10 @@
-package org.hypertrace.trace.client;
+package org.hypertrace.trace.reader;
 
 import java.util.Optional;
 import org.hypertrace.core.attribute.service.v1.AttributeKind;
 import org.hypertrace.core.attribute.service.v1.LiteralValue;
 
-public interface ValueCoercer {
+interface ValueCoercer {
 
   Optional<LiteralValue> toLiteral(String stringValue, AttributeKind attributeKind);
 

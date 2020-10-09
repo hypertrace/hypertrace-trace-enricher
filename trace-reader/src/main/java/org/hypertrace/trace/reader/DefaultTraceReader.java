@@ -1,5 +1,6 @@
-package org.hypertrace.trace.client;
+package org.hypertrace.trace.reader;
 
+import io.grpc.ManagedChannel;
 import io.reactivex.rxjava3.core.Single;
 import org.hypertrace.core.attribute.service.cachingclient.CachingAttributeClient;
 import org.hypertrace.core.attribute.service.projection.AttributeProjectionRegistry;
@@ -10,21 +11,20 @@ import org.hypertrace.core.attribute.service.v1.LiteralValue;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.StructuredTrace;
 
-class DefaultTraceClient implements TraceClient {
+class DefaultTraceReader implements TraceReader {
 
   private final CachingAttributeClient attributeClient;
   private final ValueResolver valueResolver;
   private final AttributeProjectionRegistry projectionRegistry;
 
-  DefaultTraceClient(String host, int port) {
+  DefaultTraceReader(ManagedChannel attributeServiceChannel) {
     this.attributeClient =
-        CachingAttributeClient.builder()
+        CachingAttributeClient.builder(attributeServiceChannel)
             .withAttributeFilter(
                 AttributeMetadataFilter.newBuilder()
                     .addScope(AttributeScope.EVENT)
                     .addScope(AttributeScope.TRACE)
                     .build())
-            .withNewChannel(host, port)
             .build();
     this.projectionRegistry = new AttributeProjectionRegistry();
     this.valueResolver = ValueResolver.build(this.attributeClient, this.projectionRegistry);
