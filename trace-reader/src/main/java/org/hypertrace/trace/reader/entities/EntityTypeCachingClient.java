@@ -8,17 +8,15 @@ import io.grpc.Channel;
 import io.reactivex.rxjava3.core.Observable;
 import io.reactivex.rxjava3.core.Single;
 import java.time.Duration;
-import java.util.List;
+import java.util.Collections;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
-import org.hypertrace.entity.type.service.v1.EntityType;
-import org.hypertrace.entity.type.service.v1.EntityTypeFilter;
-import org.hypertrace.entity.type.service.v1.EntityTypeServiceGrpc;
-import org.hypertrace.entity.type.service.v1.EntityTypeServiceGrpc.EntityTypeServiceStub;
+import org.hypertrace.entity.type.service.v2.EntityType;
+import org.hypertrace.entity.type.service.v2.EntityTypeFilter;
+import org.hypertrace.entity.type.service.v2.EntityTypeServiceGrpc;
+import org.hypertrace.entity.type.service.v2.EntityTypeServiceGrpc.EntityTypeServiceStub;
 
 class EntityTypeCachingClient implements EntityTypeClient {
 
@@ -56,14 +54,9 @@ class EntityTypeCachingClient implements EntityTypeClient {
             streamObserver ->
                 this.entityTypeClient.queryEntityTypes(
                     EntityTypeFilter.getDefaultInstance(), streamObserver))
-        .toList()
-        .map(this::buildMap)
+        .toMap(EntityType::getAttributeScope)
+        .map(Collections::unmodifiableMap)
         .cache();
-  }
-
-  private Map<String, EntityType> buildMap(List<EntityType> entityTypes) {
-    return entityTypes.stream()
-        .collect(Collectors.toUnmodifiableMap(EntityType::getName, Function.identity()));
   }
 
   private Single<Map<String, EntityType>> getOrInvalidate(CacheContextKey key) {
