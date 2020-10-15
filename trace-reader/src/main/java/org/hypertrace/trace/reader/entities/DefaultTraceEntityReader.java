@@ -4,6 +4,7 @@ import static io.reactivex.rxjava3.core.Maybe.zip;
 
 import io.reactivex.rxjava3.core.Maybe;
 import io.reactivex.rxjava3.core.Single;
+import java.util.Collections;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
@@ -11,8 +12,6 @@ import java.util.stream.Collectors;
 import org.hypertrace.core.attribute.service.cachingclient.CachingAttributeClient;
 import org.hypertrace.core.attribute.service.v1.AttributeMetadata;
 import org.hypertrace.core.attribute.service.v1.AttributeType;
-import org.hypertrace.core.attribute.service.v1.LiteralValue;
-import org.hypertrace.core.attribute.service.v1.LiteralValue.ValueCase;
 import org.hypertrace.core.datamodel.Entity;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.StructuredTrace;
@@ -56,26 +55,15 @@ public class DefaultTraceEntityReader implements TraceEntityReader {
   @Override
   public Single<Map<String, Entity>> getAllAssociatedEntitiesForSpan(
       StructuredTrace trace, Event span) {
+
+    // Somewhere in here we should upsert the entity (if needed) - do we wait on it to return?
     return this.entityTypeClient
         .getAll()
-        .flatMapMaybe(entityType -> this.tryBuildEntityEntry(entityType, trace, span))
-        .collect(Collectors.toUnmodifiableMap(Entry::getKey, Entry::getValue));
-  }
-
-  private Maybe<Entry<String, Entity>> tryBuildEntityEntry(
-      EntityType entityType, StructuredTrace trace, Event span) {
-    String entityTypeScope = entityType.getAttributeScope();
-    return this.traceReader
-        .getSpanValue(trace, span, entityTypeScope, entityType.getIdAttributeKey())
-        .onErrorComplete()
-        .filter(value -> value.getValueCase().equals(ValueCase.STRING_VALUE))
-        .map(LiteralValue::getStringValue)
-        .flatMapSingle(
-            id ->
-                this.entityClient.getOrCreateEntity(entityTypeScope, id)) // This needs some thought
+        .flatMapMaybe(entityType -> this.buildEntity(entityType, trace, span))
         .flatMapSingle(
             entity -> this.avroEntityConverter.convertToAvroEntity(span.getCustomerId(), entity))
-        .map(entity -> Map.entry(entityTypeScope, entity));
+        .toMap(Entity::getEntityType)
+        .map(Collections::unmodifiableMap);
   }
 
   private Maybe<org.hypertrace.entity.data.service.v2.Entity> buildEntity(
