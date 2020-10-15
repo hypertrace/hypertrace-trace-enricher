@@ -68,10 +68,13 @@ public class EntityAvroConverter {
             Optional<String> valueStr = convertValueToString(attributeValue.getValue());
             valueStr.ifPresent(avroValuesStringList::add);
           } else {
-            LOG.warn("Unsupported entity attribute type of lists of lists or list of maps: {}", attributeValue);
+            LOG.warn("Unsupported entity attribute type of list of lists or list of maps: {}", attributeValue);
           }
         }
-        result = AttributeValue.newBuilder().setValueList(avroValuesStringList).build();
+        // Only add the list if it's not empty
+        if (!avroValuesStringList.isEmpty()) {
+          result = AttributeValue.newBuilder().setValueList(avroValuesStringList).build();
+        }
       } else {
         // Currently we don't copy the map types.
         LOG.warn("Unsupported entity attribute type: " + value);
