@@ -15,16 +15,16 @@ import org.hypertrace.core.attribute.service.v1.AttributeType;
 import org.hypertrace.core.datamodel.Entity;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.StructuredTrace;
-import org.hypertrace.entity.data.service.v2.AttributeValue;
-import org.hypertrace.entity.data.service.v2.AttributeValue.TypeCase;
-import org.hypertrace.entity.data.service.v2.Value;
+import org.hypertrace.entity.data.service.v1.AttributeValue;
+import org.hypertrace.entity.data.service.v1.AttributeValue.TypeCase;
+import org.hypertrace.entity.data.service.v1.Value;
 import org.hypertrace.entity.type.service.v2.EntityType;
 import org.hypertrace.trace.reader.TraceReader;
 
-public class DefaultTraceEntityReader implements TraceEntityReader {
+class DefaultTraceEntityReader implements TraceEntityReader {
 
   private final EntityTypeClient entityTypeClient;
-  private final EntityClient entityClient;
+  private final EntityDataClient entityDataClient;
   private final CachingAttributeClient attributeClient;
   private final TraceReader traceReader;
   private final AvroEntityConverter avroEntityConverter;
@@ -32,13 +32,13 @@ public class DefaultTraceEntityReader implements TraceEntityReader {
 
   DefaultTraceEntityReader(
       EntityTypeClient entityTypeClient,
-      EntityClient entityClient,
+      EntityDataClient entityDataClient,
       CachingAttributeClient attributeClient,
       TraceReader traceReader,
       AvroEntityConverter avroEntityConverter,
       AttributeValueConverter attributeValueConverter) {
     this.entityTypeClient = entityTypeClient;
-    this.entityClient = entityClient;
+    this.entityDataClient = entityDataClient;
     this.attributeClient = attributeClient;
     this.traceReader = traceReader;
     this.avroEntityConverter = avroEntityConverter;
@@ -48,25 +48,25 @@ public class DefaultTraceEntityReader implements TraceEntityReader {
   @Override
   public Maybe<Entity> getAssociatedEntityForSpan(
       String entityType, StructuredTrace trace, Event span) {
-    return this.getAllAssociatedEntitiesForSpan(trace, span)
+    return this.getAssociatedEntitiesForSpan(trace, span)
         .mapOptional(entityMap -> Optional.ofNullable(entityMap.get(entityType)));
   }
 
   @Override
-  public Single<Map<String, Entity>> getAllAssociatedEntitiesForSpan(
+  public Single<Map<String, Entity>> getAssociatedEntitiesForSpan(
       StructuredTrace trace, Event span) {
 
-    // Somewhere in here we should upsert the entity (if needed) - do we wait on it to return?
     return this.entityTypeClient
         .getAll()
         .flatMapMaybe(entityType -> this.buildEntity(entityType, trace, span))
+        .flatMapSingle(this.entityDataClient::getOrCreateEntity)
         .flatMapSingle(
             entity -> this.avroEntityConverter.convertToAvroEntity(span.getCustomerId(), entity))
         .toMap(Entity::getEntityType)
         .map(Collections::unmodifiableMap);
   }
 
-  private Maybe<org.hypertrace.entity.data.service.v2.Entity> buildEntity(
+  private Maybe<org.hypertrace.entity.data.service.v1.Entity> buildEntity(
       EntityType entityType, StructuredTrace trace, Event span) {
     Maybe<Map<String, AttributeValue>> attributes =
         this.resolveAllAttributes(entityType.getAttributeScope(), trace, span).cache();
@@ -82,10 +82,11 @@ public class DefaultTraceEntityReader implements TraceEntityReader {
         name,
         attributes,
         (resolvedId, resolvedName, resolvedAttributeMap) ->
-            org.hypertrace.entity.data.service.v2.Entity.newBuilder()
+            org.hypertrace.entity.data.service.v1.Entity.newBuilder()
                 .setEntityId(resolvedId)
-                .setEntityType(entityType.getAttributeScope())
+                .setEntityType(entityType.getName())
                 .setEntityName(resolvedName)
+                .putAllIdentifyingAttributes(resolvedAttributeMap)
                 .putAllAttributes(resolvedAttributeMap)
                 .build());
   }
@@ -104,8 +105,7 @@ public class DefaultTraceEntityReader implements TraceEntityReader {
   private Maybe<Entry<String, AttributeValue>> resolveAttribute(
       AttributeMetadata attributeMetadata, StructuredTrace trace, Event span) {
     return this.traceReader
-        .getSpanValue(
-            trace, span, attributeMetadata.getScope().toString(), attributeMetadata.getKey())
+        .getSpanValue(trace, span, attributeMetadata.getScopeString(), attributeMetadata.getKey())
         .onErrorComplete()
         .flatMapSingle(this.attributeValueConverter::convert)
         .map(value -> Map.entry(attributeMetadata.getKey(), value));

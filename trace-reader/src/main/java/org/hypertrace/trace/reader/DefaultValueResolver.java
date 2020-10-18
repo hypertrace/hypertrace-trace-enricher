@@ -39,7 +39,7 @@ class DefaultValueResolver implements ValueResolver {
       case SOURCE_PATH:
         return this.resolveValue(
             valueSource,
-            attributeMetadata.getScope().name(),
+            attributeMetadata.getScopeString(),
             attributeMetadata.getType(),
             attributeMetadata.getValueKind(),
             attributeMetadata.getDefinition().getSourcePath());

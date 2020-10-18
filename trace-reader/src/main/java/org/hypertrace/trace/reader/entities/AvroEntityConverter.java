@@ -10,9 +10,9 @@ import javax.annotation.Nonnull;
 import org.hypertrace.core.datamodel.AttributeValue;
 import org.hypertrace.core.datamodel.Attributes;
 import org.hypertrace.core.datamodel.Entity;
-import org.hypertrace.entity.data.service.v2.AttributeValueList;
-import org.hypertrace.entity.data.service.v2.AttributeValueMap;
-import org.hypertrace.entity.data.service.v2.Value;
+import org.hypertrace.entity.data.service.v1.AttributeValueList;
+import org.hypertrace.entity.data.service.v1.AttributeValueMap;
+import org.hypertrace.entity.data.service.v1.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +21,7 @@ class AvroEntityConverter {
   private static final Logger LOG = LoggerFactory.getLogger(AvroEntityConverter.class);
 
   public Single<Entity> convertToAvroEntity(
-      @Nonnull String tenantId, @Nonnull org.hypertrace.entity.data.service.v2.Entity entity) {
+      @Nonnull String tenantId, @Nonnull org.hypertrace.entity.data.service.v1.Entity entity) {
     return this.convertAttributes(entity.getAttributesMap())
         .map(
             attributes ->
@@ -35,7 +35,7 @@ class AvroEntityConverter {
   }
 
   private Single<Attributes> convertAttributes(
-      Map<String, org.hypertrace.entity.data.service.v2.AttributeValue> attributeMap) {
+      Map<String, org.hypertrace.entity.data.service.v1.AttributeValue> attributeMap) {
 
     return Observable.fromIterable(attributeMap.entrySet())
         .flatMapMaybe(
@@ -49,7 +49,7 @@ class AvroEntityConverter {
   }
 
   private Single<AttributeValue> convertAttributeValue(
-      org.hypertrace.entity.data.service.v2.AttributeValue value) {
+      org.hypertrace.entity.data.service.v1.AttributeValue value) {
     switch (value.getTypeCase()) {
       case VALUE:
         return this.convertValue(value.getValue());
@@ -119,6 +119,7 @@ class AvroEntityConverter {
             AttributeValue.newBuilder()
                 .setBinaryValue(value.getBytes().asReadOnlyByteBuffer())
                 .build());
+      case CUSTOM:
       case TYPE_NOT_SET:
       default:
         return Single.error(
