@@ -2,6 +2,9 @@ package org.hypertrace.traceenricher.enrichedspan.constants.utils;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
+
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
@@ -9,6 +12,8 @@ import java.util.Optional;
 import org.apache.avro.reflect.Nullable;
 import org.hypertrace.core.datamodel.AttributeValue;
 import org.hypertrace.core.datamodel.Event;
+import org.hypertrace.core.datamodel.eventfields.http.Request;
+import org.hypertrace.core.datamodel.eventfields.http.RequestHeaders;
 import org.hypertrace.core.datamodel.shared.SpanAttributeUtils;
 import org.hypertrace.core.span.constants.RawSpanConstants;
 import org.hypertrace.core.span.constants.v1.Docker;
@@ -24,6 +29,10 @@ import org.hypertrace.traceenricher.enrichedspan.constants.v1.BoundaryTypeValue;
 import org.hypertrace.traceenricher.enrichedspan.constants.v1.CommonAttribute;
 import org.hypertrace.traceenricher.enrichedspan.constants.v1.Http;
 import org.hypertrace.traceenricher.enrichedspan.constants.v1.Protocol;
+
+import static org.hypertrace.core.span.constants.v1.Http.HTTP_REQUEST_URL;
+import static org.hypertrace.core.span.constants.v1.Http.HTTP_URL;
+import static org.hypertrace.core.span.constants.v1.OTSpanTag.OT_SPAN_TAG_HTTP_URL;
 
 /**
  * Utility class to easily read named attributes from an enriched span. This is equivalent of
@@ -84,6 +93,13 @@ public class EnrichedSpanUtils {
       RawSpanConstants.getValue(org.hypertrace.core.span.constants.v1.Http.HTTP_USER_AGENT_WITH_DASH);
   private static final String USER_AGENT_REQUEST_HEADER =
       RawSpanConstants.getValue(org.hypertrace.core.span.constants.v1.Http.HTTP_USER_AGENT_REQUEST_HEADER);
+
+  private static final String HTTP_PREFIX = "http";
+  private static final List<String> FULL_URL_ATTRIBUTES =
+          List.of(
+                  RawSpanConstants.getValue(OT_SPAN_TAG_HTTP_URL),
+                  RawSpanConstants.getValue(HTTP_REQUEST_URL),
+                  RawSpanConstants.getValue(HTTP_URL));
 
   @VisibleForTesting
   static final List<String> USER_AGENT_ATTRIBUTES =
@@ -301,12 +317,74 @@ public class EnrichedSpanUtils {
     return Optional.empty();
   }
 
+  /**
+   * This method returns an Optional which, if present, contains the full URL, including the protocol and host name.
+   * If the tags in the raw span do not contain the full URL, it tries to construct a full URL using the protocol
+   * ("http") and host name.
+   */
   public static Optional<String> getFullHttpUrl(Event event) {
-    if (event.getHttp() != null && event.getHttp().getRequest() != null) {
-      return Optional.ofNullable(event.getHttp().getRequest().getUrl());
-    }
+    Optional<String> optionalUrl = Optional.ofNullable(event.getHttp())
+            .map(org.hypertrace.core.datamodel.eventfields.http.Http::getRequest)
+            .map(Request::getUrl);
 
-    return Optional.empty();
+    if (optionalUrl.isEmpty() && event.getAttributes() != null && event.getAttributes().getAttributeMap() != null) {
+      // iterate on all URL related attribute keys and find / create one with protocol, host header and path
+      Map<String, AttributeValue> attributesMap = event.getAttributes().getAttributeMap();
+      for (String urlAttribute : FULL_URL_ATTRIBUTES) {
+        if (attributesMap.containsKey(urlAttribute)) {
+          String url = attributesMap.get(urlAttribute).getValue();
+          if (url != null && url.toLowerCase().startsWith(HTTP_PREFIX)) {
+            optionalUrl = Optional.of(url);
+          } else {
+            optionalUrl = constructHttpUrlFromHostName(event);
+          }
+        }
+      }
+    }
+    return optionalUrl;
+  }
+
+  private static Optional<String> constructHttpUrlFromHostName(Event event) {
+    Optional<String> optionalUrl = Optional.empty();
+    Optional<RequestHeaders> requestHeaders = Optional.ofNullable(event.getHttp())
+            .map(org.hypertrace.core.datamodel.eventfields.http.Http::getRequest)
+            .map(Request::getHeaders);
+    Optional<String> hostName = requestHeaders.map(RequestHeaders::getHost);
+    Optional<String> path = requestHeaders.map(RequestHeaders::getPath);
+    if (hostName.isPresent() && path.isPresent()) {
+      try {
+        URL fullUrl = new URL(HTTP_PREFIX, hostName.get(), path.get());
+        optionalUrl = Optional.of(fullUrl.toString());
+      } catch (MalformedURLException e) {
+        // ignore. optionalUrl will be empty.
+      }
+    }
+    return optionalUrl;
+  }
+
+  /**
+   * This method returns an Optional which, if present, contains the URL as captured in the tags. It may or may not
+   * be a full URL. For instance, it may only contain the path and not the protocol and hostname like
+   * "/customer?customer=392".
+   */
+  public static Optional<String> getHttpUrl(Event event) {
+    Optional<String> optionalUrl = Optional.ofNullable(event.getHttp())
+            .map(org.hypertrace.core.datamodel.eventfields.http.Http::getRequest)
+            .map(Request::getUrl);
+
+    if (optionalUrl.isEmpty() && event.getAttributes() != null && event.getAttributes().getAttributeMap() != null) {
+      // iterate on all URL related attribute keys and find the first non-empty one
+      Map<String, AttributeValue> attributesMap = event.getAttributes().getAttributeMap();
+      for (String urlAttribute : FULL_URL_ATTRIBUTES) {
+        if (attributesMap.containsKey(urlAttribute)) {
+          String url = attributesMap.get(urlAttribute).getValue();
+          if (url != null && !url.isEmpty()) {
+            optionalUrl = Optional.of(url);
+          }
+        }
+      }
+    }
+    return optionalUrl;
   }
 
   public static Optional<Integer> getRequestSize(Event event) {
