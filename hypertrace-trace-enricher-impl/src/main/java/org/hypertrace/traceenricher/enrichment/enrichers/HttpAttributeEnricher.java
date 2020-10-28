@@ -5,8 +5,9 @@ import static java.util.stream.Collectors.mapping;
 import static java.util.stream.Collectors.toList;
 
 import com.google.common.base.Splitter;
-import java.net.MalformedURLException;
-import java.net.URL;
+
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
@@ -26,7 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class HttpAttributeEnricher extends AbstractTraceEnricher {
-  private static Logger LOG = LoggerFactory.getLogger(HttpAttributeEnricher.class);
+  private static final Logger LOG = LoggerFactory.getLogger(HttpAttributeEnricher.class);
   private final static String HTTP_REQUEST_PATH_ATTR =
       EnrichedSpanConstants.getValue(Http.HTTP_REQUEST_PATH);
   private final static String HTTP_REQUEST_QUERY_PARAM_ATTR =
@@ -37,20 +38,20 @@ public class HttpAttributeEnricher extends AbstractTraceEnricher {
 
   @Override
   public void enrichEvent(StructuredTrace trace, Event event) {
-    String url = EnrichedSpanUtils.getFullHttpUrl(event).orElse(null);
-    if (url != null) {
-      URL fullUrl = null;
+    String urlString = EnrichedSpanUtils.getFullHttpUrl(event).orElse(null);
+    if (urlString != null) {
+      URI uri = null;
       try {
-        fullUrl = new URL(url);
-      } catch (MalformedURLException e) {
-        LOG.warn("The url {} is not a valid format url", url);
+        uri = new URI(urlString);
+      } catch (URISyntaxException e) {
+        LOG.warn("The url {} is not a valid URI", urlString);
       }
 
-      if (fullUrl != null) {
-        String path = fullUrl.getPath();
+      if (uri != null) {
+        String path = uri.getPath();
         addEnrichedAttribute(event, HTTP_REQUEST_PATH_ATTR, AttributeValueCreator.create(path));
 
-        Map<String, List<String>> paramNameToValues = getQueryParamsFromUrl(fullUrl);
+        Map<String, List<String>> paramNameToValues = getQueryParamsFromUri(uri);
         for (Map.Entry<String, List<String>> queryParamEntry : paramNameToValues.entrySet()) {
           if (queryParamEntry.getValue().isEmpty()) {
             continue;
@@ -68,12 +69,12 @@ public class HttpAttributeEnricher extends AbstractTraceEnricher {
     }
   }
 
-  private Map<String, List<String>> getQueryParamsFromUrl(URL url) {
-    if (StringUtils.isEmpty(url.getQuery())) {
+  private Map<String, List<String>> getQueryParamsFromUri(URI uri) {
+    if (StringUtils.isEmpty(uri.getQuery())) {
       return Collections.emptyMap();
     }
     return Splitter.on(QUERY_PARAM_DELIMITER)
-        .splitToList(url.getQuery())
+        .splitToList(uri.getQuery())
         .stream()
         //split only on first occurrence of delimiter. eg: cat=1dog=2 should be split to cat -> 1dog=2
         .map(kv -> kv.split(QUERY_PARAM_KEY_VALUE_DELIMITER, 2))
