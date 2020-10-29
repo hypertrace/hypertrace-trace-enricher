@@ -64,10 +64,6 @@ dependencies {
   implementation("org.hypertrace.core.spannormalizer:raw-span-constants:0.1.2")
   implementation("org.hypertrace.entity.service:entity-service-api:0.1.23")
 
-  runtimeOnly("com.google.guava:guava:30.0-android") {
-    because("https://snyk.io/vuln/SNYK-JAVA-COMGOOGLEGUAVA-1015415")
-  }
-
   testImplementation("org.junit.jupiter:junit-jupiter:5.6.2")
   testImplementation("org.mockito:mockito-core:3.3.3")
 }

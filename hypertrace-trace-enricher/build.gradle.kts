@@ -43,10 +43,6 @@ dependencies {
       because("Denial of Service (DoS) [Medium Severity][https://snyk.io/vuln/SNYK-JAVA-ORGYAML-537645] in org.yaml:snakeyaml@1.23\n" +
           "   introduced by io.confluent:kafka-avro-serializer@5.5.0 > io.confluent:kafka-schema-registry-client@5.5.0 > io.swagger:swagger-core@1.5.3 > com.fasterxml.jackson.dataformat:jackson-dataformat-yaml@2.4.5 > org.yaml:snakeyaml@1.12")
     }
-    implementation("com.google.guava:guava:30.0-android") {
-      because("Information Disclosure (new) [Medium Severity][https://snyk.io/vuln/SNYK-JAVA-COMGOOGLEGUAVA-1015415] in com.google.guava:guava@29.0-jre\n" +
-          "   introduced by com.google.guava:guava@29.0-jre")
-    }
   }
 
   implementation(project(":hypertrace-trace-enricher-impl"))
