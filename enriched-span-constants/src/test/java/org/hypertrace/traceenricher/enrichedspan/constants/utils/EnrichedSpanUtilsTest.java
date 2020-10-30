@@ -237,7 +237,7 @@ public class EnrichedSpanUtilsTest {
             .build()
     );
 
-    Optional<String> url = EnrichedSpanUtils.getFullHttpUrl(e);
+    Optional<String> url = EnrichedSpanUtils.getHttpUrl(e);
     assertFalse(url.isEmpty());
     assertEquals("http://hipstershop.com?order=1", url.get());
   }
@@ -246,7 +246,7 @@ public class EnrichedSpanUtilsTest {
   public void should_getNullUrl_noHttpFields() {
     Event e = mock(Event.class);
 
-    Optional<String> url = EnrichedSpanUtils.getFullHttpUrl(e);
+    Optional<String> url = EnrichedSpanUtils.getHttpUrl(e);
     assertTrue(url.isEmpty());
   }
 

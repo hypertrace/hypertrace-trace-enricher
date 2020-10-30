@@ -18,7 +18,6 @@ import org.hypertrace.traceenricher.enrichedspan.constants.v1.CommonAttribute;
 import org.hypertrace.traceenricher.enrichedspan.constants.v1.Protocol;
 import org.hypertrace.traceenricher.enrichment.AbstractTraceEnricher;
 import org.hypertrace.traceenricher.util.Constants;
-import org.hypertrace.traceenricher.util.EnricherUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -202,7 +201,7 @@ public class SpanTypeAttributeEnricher extends AbstractTraceEnricher {
     Map<String, AttributeValue> attributeMap = event.getAttributes().getAttributeMap();
 
     // Try to check whether HTTP or HTTPS based on full URL.
-    String fullUrl = EnrichedSpanUtils.getFullHttpUrl(event).orElse(null);
+    String fullUrl = EnrichedSpanUtils.getHttpUrl(event).orElse(null);
     if (fullUrl != null) {
       try {
         URI uri = new URI(fullUrl);

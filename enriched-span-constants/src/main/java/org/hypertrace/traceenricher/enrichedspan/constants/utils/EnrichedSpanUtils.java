@@ -301,7 +301,7 @@ public class EnrichedSpanUtils {
     return Optional.empty();
   }
 
-  public static Optional<String> getFullHttpUrl(Event event) {
+  public static Optional<String> getHttpUrl(Event event) {
     if (event.getHttp() != null && event.getHttp().getRequest() != null) {
       return Optional.ofNullable(event.getHttp().getRequest().getUrl());
     }

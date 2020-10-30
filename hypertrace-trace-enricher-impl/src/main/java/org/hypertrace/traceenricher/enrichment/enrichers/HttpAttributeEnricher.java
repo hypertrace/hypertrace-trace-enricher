@@ -38,7 +38,7 @@ public class HttpAttributeEnricher extends AbstractTraceEnricher {
 
   @Override
   public void enrichEvent(StructuredTrace trace, Event event) {
-    String urlString = EnrichedSpanUtils.getFullHttpUrl(event).orElse(null);
+    String urlString = EnrichedSpanUtils.getHttpUrl(event).orElse(null);
     if (urlString != null) {
       URI uri = null;
       try {
