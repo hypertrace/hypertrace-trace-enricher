@@ -2,10 +2,11 @@ plugins {
   `java-library`
   jacoco
   id("org.hypertrace.jacoco-report-plugin")
+  id("org.hypertrace.publish-plugin")
 }
 
 dependencies {
-  implementation("org.hypertrace.core.datamodel:data-model:0.1.4")
+  implementation("org.hypertrace.core.datamodel:data-model:0.1.9")
   implementation("org.hypertrace.core.attribute.service:attribute-service-api:0.6.1")
   implementation("org.hypertrace.core.attribute.service:caching-attribute-service-client:0.6.1")
   implementation("org.hypertrace.core.attribute.service:attribute-projection-registry:0.6.1")
