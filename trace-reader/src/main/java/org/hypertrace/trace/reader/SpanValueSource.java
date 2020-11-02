@@ -1,8 +1,8 @@
 package org.hypertrace.trace.reader;
 
+import java.util.Objects;
 import java.util.Optional;
 import org.hypertrace.core.attribute.service.v1.AttributeKind;
-import org.hypertrace.core.attribute.service.v1.AttributeScope;
 import org.hypertrace.core.attribute.service.v1.LiteralValue;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.StructuredTrace;
@@ -34,8 +34,21 @@ class SpanValueSource extends AvroBackedValueSource {
 
   @Override
   public Optional<ValueSource> sourceForScope(String scope) {
-    return AttributeScope.TRACE.name().equals(scope)
+    return TRACE_SCOPE.equals(scope)
         ? Optional.of(ValueSource.forTrace(this.trace))
         : Optional.of(this);
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (o == null || getClass() != o.getClass()) return false;
+    SpanValueSource that = (SpanValueSource) o;
+    return Objects.equals(trace, that.trace) && Objects.equals(span, that.span);
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(trace, span);
   }
 }

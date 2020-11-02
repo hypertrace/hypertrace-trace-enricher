@@ -20,4 +20,6 @@ interface ValueSource {
   static ValueSource forTrace(StructuredTrace trace) {
     return new TraceValueSource(trace, DefaultValueCoercer.INSTANCE);
   }
+
+  String TRACE_SCOPE = "TRACE";
 }

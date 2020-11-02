@@ -9,14 +9,14 @@ import org.hypertrace.core.datamodel.Metrics;
 
 abstract class AvroBackedValueSource implements ValueSource {
 
-  Optional<String> getAttributeString(@Nullable Attributes attributes, String key) {
+  protected Optional<String> getAttributeString(@Nullable Attributes attributes, String key) {
     return Optional.ofNullable(attributes)
         .map(Attributes::getAttributeMap)
         .map(attributeMap -> attributeMap.get(key))
         .map(AttributeValue::getValue);
   }
 
-  Optional<Double> getMetricDouble(@Nullable Metrics metrics, String key) {
+  protected Optional<Double> getMetricDouble(@Nullable Metrics metrics, String key) {
     return Optional.ofNullable(metrics)
         .map(Metrics::getMetricMap)
         .map(metricMap -> metricMap.get(key))
