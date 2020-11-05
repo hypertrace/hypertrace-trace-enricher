@@ -84,7 +84,9 @@ public class ApiBoundaryTypeAttributeEnricher extends AbstractTraceEnricher {
       */
 
       Event parentEvent = graph.getParentEvent(event);
-      if (!EnrichedSpanUtils.isEntrySpan(parentEvent)) {
+      if (!EnrichedSpanUtils.isEntrySpan(parentEvent) ||
+          !StringUtils.equals(parentEvent.getServiceName(), event.getServiceName()))
+      {
         addEnrichedAttribute(event, API_BOUNDARY_TYPE_ATTR_NAME,
             AttributeValueCreator.create(ENTRY_BOUNDARY_TYPE));
 
