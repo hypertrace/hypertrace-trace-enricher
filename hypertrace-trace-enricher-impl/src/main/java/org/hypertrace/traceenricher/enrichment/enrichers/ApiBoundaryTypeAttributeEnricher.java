@@ -1,6 +1,7 @@
 package org.hypertrace.traceenricher.enrichment.enrichers;
 
 import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import org.apache.commons.lang3.StringUtils;
 import org.hypertrace.core.datamodel.AttributeValue;
@@ -84,8 +85,7 @@ public class ApiBoundaryTypeAttributeEnricher extends AbstractTraceEnricher {
       */
 
       Event parentEvent = graph.getParentEvent(event);
-      if (!EnrichedSpanUtils.isEntrySpan(parentEvent) ||
-          !StringUtils.equals(parentEvent.getServiceName(), event.getServiceName()))
+      if (!EnrichedSpanUtils.isEntrySpan(parentEvent) || isParentEntryFromDifferentService(parentEvent, event))
       {
         addEnrichedAttribute(event, API_BOUNDARY_TYPE_ATTR_NAME,
             AttributeValueCreator.create(ENTRY_BOUNDARY_TYPE));
@@ -114,6 +114,12 @@ public class ApiBoundaryTypeAttributeEnricher extends AbstractTraceEnricher {
         }
       }
     }
+  }
+
+  private boolean isParentEntryFromDifferentService(Event parentEvent, Event event) {
+    return !Strings.isNullOrEmpty(parentEvent.getServiceName()) &&
+        !Strings.isNullOrEmpty(event.getServiceName()) &&
+        !StringUtils.equals(parentEvent.getServiceName(), event.getServiceName());
   }
 
   /**
