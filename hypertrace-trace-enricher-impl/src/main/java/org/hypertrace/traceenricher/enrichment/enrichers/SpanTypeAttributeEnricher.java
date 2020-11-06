@@ -18,13 +18,12 @@ import org.hypertrace.traceenricher.enrichedspan.constants.v1.CommonAttribute;
 import org.hypertrace.traceenricher.enrichedspan.constants.v1.Protocol;
 import org.hypertrace.traceenricher.enrichment.AbstractTraceEnricher;
 import org.hypertrace.traceenricher.util.Constants;
-import org.hypertrace.traceenricher.util.EnricherUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Map;
 
 /**
@@ -205,12 +204,12 @@ public class SpanTypeAttributeEnricher extends AbstractTraceEnricher {
     String fullUrl = EnrichedSpanUtils.getFullHttpUrl(event).orElse(null);
     if (fullUrl != null) {
       try {
-        URI uri = new URI(fullUrl);
-        Protocol protocol = NAME_TO_PROTOCOL_MAP.get(uri.getScheme().toUpperCase());
+        URL url = new URL(fullUrl);
+        Protocol protocol = NAME_TO_PROTOCOL_MAP.get(url.getProtocol().toUpperCase());
         if (protocol != null) {
           return protocol;
         }
-      } catch (URISyntaxException ignore) {
+      } catch (MalformedURLException ignore) {
         // Ignore these exceptions.
       }
     }

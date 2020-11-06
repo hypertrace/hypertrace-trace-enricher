@@ -3,7 +3,8 @@ package org.hypertrace.traceenricher.enrichment.enrichers.resolver.backend;
 import static org.hypertrace.traceenricher.util.EnricherUtil.createAttributeValue;
 import static org.hypertrace.traceenricher.util.EnricherUtil.setAttributeIfExist;
 
-import java.net.URI;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.hypertrace.core.datamodel.Event;
@@ -40,41 +41,41 @@ public class HttpBackendResolver extends AbstractBackendResolver {
     Protocol protocol = EnrichedSpanUtils.getProtocol(event);
 
     if (protocol == Protocol.PROTOCOL_HTTP || protocol == Protocol.PROTOCOL_HTTPS) {
-      String backendUriStr = null;
+      String urlStr = null;
       String path = null;
       if (SpanAttributeUtils.containsAttributeKey(event, HTTP_URL_ATTR)) {
-        backendUriStr = SpanAttributeUtils.getStringAttribute(event, HTTP_URL_ATTR);
+        urlStr = SpanAttributeUtils.getStringAttribute(event, HTTP_URL_ATTR);
       } else if (SpanAttributeUtils.containsAttributeKey(event, HTTP_REQUEST_URL_ATTR)) {
-        backendUriStr = SpanAttributeUtils.getStringAttribute(event, HTTP_REQUEST_URL_ATTR);
+        urlStr = SpanAttributeUtils.getStringAttribute(event, HTTP_REQUEST_URL_ATTR);
       }
 
-      if (StringUtils.isNotEmpty(backendUriStr)) {
-        URI backendURI;
+      String backend = null;
+      if (StringUtils.isNotEmpty(urlStr)) {
         try {
-          backendURI = URI.create(backendUriStr);
-          backendUriStr = String.format("%s:%d", backendURI.getHost(), backendURI.getPort());
-          path = backendURI.getPath();
-        } catch (IllegalArgumentException e) {
-          LOGGER.warn("Failed to parse URL string {} to create URI", backendUriStr);
-          backendUriStr = null;
+          URL url = new URL(urlStr);
+          backend = String.format("%s:%d", url.getHost(), url.getPort());
+          path = url.getPath();
+        } catch (MalformedURLException e) {
+          LOGGER.warn("Failed to parse URL string {} to create URL", backend);
+          backend = null;
         }
       }
       // if URL string was null or unable to parse URL string, check host attribute
-      if (StringUtils.isEmpty(backendUriStr) && SpanAttributeUtils.containsAttributeKey(event, HTTP_HOST_ATTR)) {
-        backendUriStr = SpanAttributeUtils.getStringAttribute(event, HTTP_HOST_ATTR);
+      if (StringUtils.isEmpty(backend) && SpanAttributeUtils.containsAttributeKey(event, HTTP_HOST_ATTR)) {
+        backend = SpanAttributeUtils.getStringAttribute(event, HTTP_HOST_ATTR);
         if (SpanAttributeUtils.containsAttributeKey(event, HTTP_PATH_ATTR)) {
           path = SpanAttributeUtils.getStringAttribute(event, HTTP_PATH_ATTR);
         }
       }
 
-      if (StringUtils.isEmpty(backendUriStr)) {
+      if (StringUtils.isEmpty(backend)) {
         // Shouldn't reach here.
         LOGGER.warn("Unable to infer a http backend from event: {}", event);
         return Optional.empty();
       }
 
       BackendType type = (protocol == Protocol.PROTOCOL_HTTPS) ? BackendType.HTTPS : BackendType.HTTP;
-      final Builder entityBuilder = getBackendEntityBuilder(type, backendUriStr, event);
+      final Builder entityBuilder = getBackendEntityBuilder(type, backend, event);
       if (StringUtils.isNotEmpty(path)) {
         entityBuilder.putAttributes(
             EntityConstants.getValue(BackendAttribute.BACKEND_ATTRIBUTE_PATH),
