@@ -3,13 +3,10 @@ package org.hypertrace.traceenricher.enrichment.enrichers.resolver.backend;
 import static org.hypertrace.traceenricher.util.EnricherUtil.createAttributeValue;
 import static org.hypertrace.traceenricher.util.EnricherUtil.setAttributeIfExist;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.hypertrace.core.datamodel.Event;
 import org.hypertrace.core.datamodel.eventfields.http.Request;
-import org.hypertrace.core.datamodel.shared.SpanAttributeUtils;
 import org.hypertrace.core.datamodel.shared.StructuredTraceGraph;
 import org.hypertrace.core.span.constants.RawSpanConstants;
 import org.hypertrace.core.span.constants.v1.Http;
@@ -27,9 +24,6 @@ import org.slf4j.LoggerFactory;
 public class HttpBackendResolver extends AbstractBackendResolver {
   private static final Logger LOGGER = LoggerFactory.getLogger(HttpBackendResolver.class);
 
-  private static final String HTTP_HOST_ATTR = RawSpanConstants.getValue(Http.HTTP_HOST);
-  private static final String HTTP_PATH_ATTR = RawSpanConstants.getValue(Http.HTTP_PATH);
-
   public HttpBackendResolver(FQNResolver fqnResolver) {
     super(fqnResolver);
   }
@@ -43,14 +37,6 @@ public class HttpBackendResolver extends AbstractBackendResolver {
               .map(org.hypertrace.core.datamodel.eventfields.http.Http::getRequest);
       String backend = httpRequest.map(Request::getHost).orElse(null);
       String path = httpRequest.map(Request::getPath).orElse(null);
-
-      // if URL string was null or unable to parse URL string, check host attribute
-      if (StringUtils.isEmpty(backend) && SpanAttributeUtils.containsAttributeKey(event, HTTP_HOST_ATTR)) {
-        backend = SpanAttributeUtils.getStringAttribute(event, HTTP_HOST_ATTR);
-        if (SpanAttributeUtils.containsAttributeKey(event, HTTP_PATH_ATTR)) {
-          path = SpanAttributeUtils.getStringAttribute(event, HTTP_PATH_ATTR);
-        }
-      }
 
       if (StringUtils.isEmpty(backend)) {
         // Shouldn't reach here.
